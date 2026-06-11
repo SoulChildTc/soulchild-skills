@@ -1,23 +1,36 @@
-## Code-Explorer Skill
+# soulchild-skills
 
-> 通用代码学习向导
+写给自己用的 AI Skills，顺手就丢上来了。
 
-### 一句话介绍
+---
 
-当你面对陌生的代码库时，`code-explorer` 会像一位技术导师，帮你把模糊的问题变成清晰的答案。
-
-### 一键安装
+## 安装
 
 ```bash
-npx skills add SoulChildTc/code-explorer
+npx skills add SoulChildTc/soulchild-skills --skill code-expolorer
+npx skills add SoulChildTc/soulchild-skills --skill opencode-dev
 ```
 
-安装后，在对话中输入 `用 code-explorer 帮我分析 [项目] 中的 [功能]`，剩下的交给它。
+---
 
-### 兼容性
+## code-expolorer
 
-支持通过 `npx skills add` 安装技能的各类 AI 编程助手，包括但不限于：OpenCode、Claude Code、Cursor、Codex 等。
+读别人代码的时候用的。你大概也遇到过这种场景：打开一个项目，文件一堆，不知道从哪看起。丢给它一个功能名字，它会从宏观到细节递进着讲，最后用大白话给你总结一遍。
 
-### 许可证
+**适合场景：** 接手项目、读开源代码、理解模块怎么工作的
+**触发方式：** `用 code-explorer 帮我分析 xx`、`这个模块怎么工作的`
 
-MIT © 2026
+[→ SKILL.md](./code-expolorer/SKILL.md)
+
+## opencode-dev
+
+基于 Open Code 做开发时查的。Open Code TUI 的完整参考——架构、会话、消息、权限、SSE 事件、SDK API、OpenAPI 端点表，全在一份 SKILL.md 里，不用反复翻源码。
+
+**适合场景：** 基于 SDK 做二次开发、写移动端、理解 Open Code 内部机制
+**触发方式：** 上下文自动触发
+
+[→ SKILL.md](./opencode-dev/SKILL.md)
+
+---
+
+MIT · [SoulChildTc](https://github.com/SoulChildTc)
