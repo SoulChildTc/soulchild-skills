@@ -9,6 +9,7 @@
 ```bash
 npx skills add SoulChildTc/soulchild-skills --skill code-expolorer
 npx skills add SoulChildTc/soulchild-skills --skill opencode-dev
+npx skills add SoulChildTc/soulchild-skills --skill prompt-gen
 ```
 
 ---
@@ -30,6 +31,15 @@ npx skills add SoulChildTc/soulchild-skills --skill opencode-dev
 **触发方式：** 上下文自动触发
 
 [→ SKILL.md](./opencode-dev/SKILL.md)
+
+## prompt-gen
+
+提示词生成器。把脑子里模糊的想法变成结构化的 AI 提示词，自动判断任务复杂度选择精简或完整模板，生成后还会自检一遍。
+
+**适合场景：** 写新提示词、优化现有提示词、把模糊需求变成可执行指令
+**触发方式：** `帮我写个提示词`、`优化这个 prompt`、`生成 prompt`
+
+[→ SKILL.md](./prompt-gen/SKILL.md)
 
 ---
 

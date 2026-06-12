@@ -1,0 +1,23 @@
+{
+  "skill_name": "prompt-gen",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我写个提示词，让 AI 帮我写周报。我是个后端开发，每周要汇报这周做了什么、下周计划、遇到的问题。",
+      "expected_output": "生成一个结构化的周报生成提示词，包含 Role、Task、Context & Rules、Workflow、Output Format",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我想让 AI 帮我做代码审查，主要是 Python 代码，关注安全漏洞和性能问题。",
+      "expected_output": "生成一个代码审查提示词，针对 Python，聚焦安全和性能",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I need a prompt that can help me turn meeting notes into action items. I take messy notes during meetings and want AI to extract clear tasks with deadlines and owners.",
+      "expected_output": "Generate a structured prompt for extracting action items from meeting notes",
+      "files": []
+    }
+  ]
+}
