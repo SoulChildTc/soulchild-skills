@@ -4,6 +4,7 @@ description: >
   生成高质量结构化提示词。当用户说"帮我写个提示词"、"优化这个 prompt"、"生成 prompt"、
   "写一个 AI 指令"、"帮我调一下提示词"、"prompt engineering"、"提示词工程"时使用。
   也适用于用户描述了一个模糊的 AI 任务想要提炼成可用指令的场景。
+  如果当前环境是 OpenCode，生成 prompt 后会询问是否创建为 OpenCode Agent。
 ---
 
 # 提示词生成器
@@ -167,3 +168,81 @@ description: >
 - 语言跟随用户输入：中文问就生成中文 prompt，英文问就生成英文 prompt
 - 不要过度设计：简单任务用精简模板，不要为了结构完整而凑内容
 - 如果用户已经有 prompt 想优化，先分析问题再改进，不要推翻重来
+
+## Step 6（可选）: 创建 OpenCode Agent
+
+**前提：当前环境必须是 OpenCode。** 如果不在 OpenCode 中运行，跳过此步骤。
+
+在 Step 5 质量自检完成后，询问用户：
+
+> 提示词已生成。要把它创建为 OpenCode Agent 吗？
+
+用户选择不要 → 正常结束。用户选择要 → 继续以下流程：
+
+### 6.1 收集配置（只问 2 个问题）
+
+**问题 1：Agent 模式**
+
+用大白话解释，让用户快速做决定：
+
+| 模式 | 说明 | 适用场景 |
+|------|------|---------|
+| `primary` | 主 Agent，按 Tab 切换到它 | 需要直接对话、频繁使用的 Agent |
+| `subagent` | 子 Agent，用 @ 调用 | 辅助角色，被其他 Agent 派发任务 |
+| `all` | 两者皆可 | 不确定时选这个 |
+
+**问题 2：保存位置**
+
+| 选项 | 路径 | 说明 |
+|------|------|------|
+| 全局 | `~/.config/opencode/agents/<name>.md` | 所有项目都能用 |
+| 项目 | `.opencode/agents/<name>.md` | 只在当前项目生效 |
+
+### 6.2 自动推断（不问用户）
+
+**temperature** — 根据 prompt 内容推断：
+
+| prompt 类型 | 推荐值 |
+|------------|--------|
+| 代码开发/安全审计/数据分析 | 0.1 - 0.2 |
+| 分析诊断/策略规划/代码审查 | 0.3 - 0.4 |
+| 创意文案/营销增长/内容创作 | 0.5 - 0.6 |
+
+**permission** — 根据 prompt 中的动作词推断：
+
+| prompt 中出现的关键词 | 权限配置 |
+|---------------------|---------|
+| 执行、修改、部署、运行、创建文件、编写 | `edit: allow`, `bash: ask` |
+| 分析、审查、建议、诊断、阅读、总结 | `edit: deny`, `bash: deny` |
+| 以上两类都有（混合型） | `edit: ask`, `bash: ask` |
+| 涉及外部资源、API 调用、网页抓取 | `webfetch: allow` |
+| 不涉及 | `webfetch: deny` |
+
+**默认规则**：`read: allow`，`task: deny`（除非 prompt 明确需要调用其他 Agent）。
+
+### 6.3 生成 Agent 文件
+
+文件名由用户指定（如 `code-reviewer`），内容格式：
+
+```markdown
+---
+description: [从 prompt 的 Role 和 Task 中提炼一句话描述，15-30 字]
+mode: [primary / subagent / all]
+temperature: [自动推断的值]
+permission: [自动推断的配置]
+---
+
+[Step 4 生成的完整 prompt 内容]
+```
+
+**注意**：
+- 不要包含 `model` 字段，让 OpenCode 使用默认模型
+- description 必须写，它是 Agent 在 @ 菜单中展示的简介
+- prompt 内容直接复用 Step 4 的输出，不要重新改写
+
+### 6.4 Agent 命名规则
+
+文件名即 Agent 名称，要求：
+- 全小写，用连字符分隔（如 `code-reviewer`、`wechat-operator`）
+- 简短有意义，2-3 个词
+- 用户没指定时，根据 prompt 内容建议一个
