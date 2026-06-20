@@ -7,9 +7,14 @@
 ## 安装
 
 ```bash
+# 多选安装
+npx skills add SoulChildTc/soulchild-skills
+
+# 指定安装
 npx skills add SoulChildTc/soulchild-skills --skill code-expolorer
 npx skills add SoulChildTc/soulchild-skills --skill opencode-dev
 npx skills add SoulChildTc/soulchild-skills --skill prompt-gen
+npx skills add SoulChildTc/soulchild-skills --skill skill-architecture-guide
 ```
 
 ---
@@ -40,6 +45,17 @@ npx skills add SoulChildTc/soulchild-skills --skill prompt-gen
 **触发方式：** `帮我写个提示词`、`优化这个 prompt`、`生成 prompt`
 
 [→ SKILL.md](./prompt-gen/SKILL.md)
+
+## skill-architecture-guide
+
+Skill 架构设计参考。当你创建新 Skill、审查已有 Skill 结构或优化 SKILL.md 时使用。覆盖渐进式加载、self-contained 文件拆分、description 编写、引用策略、目录结构、常见反模式。
+
+和 skill-creator 的关系：skill-creator 管 TDD 创建流程（写 → 测 → 改），skill-architecture-guide 管结构设计（文件怎么放、引用怎么指、description 怎么写）。两者互补，可以一起用。
+
+**适合场景：** 创建新 Skill、优化已有 Skill、审查 Skill 结构
+**触发方式：** `帮我设计一个 skill`、`这个 skill 结构合理吗`、`帮我优化 skill`
+
+[→ SKILL.md](./skill-architecture-guide/SKILL.md)
 
 ---
 
