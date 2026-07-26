@@ -1,0 +1,61 @@
+{
+  "skill_id": "zhaimen-juece",
+  "test_prompts": [
+    {
+      "id": "t01",
+      "prompt": "我在公司报销的时候多填了几百块，没人会查出来，这样做有问题吗？",
+      "expected_activation": true,
+      "expected_skill": "zhaimen-juece",
+      "rationale": "利益诱惑面前、无人监督时做道德判断，典型窄门场景"
+    },
+    {
+      "id": "t02",
+      "prompt": "朋友让我帮他走后门在面试中放水，他说反正没人知道，我该不该帮他？",
+      "expected_activation": true,
+      "expected_skill": "zhaimen-juece",
+      "rationale": "面对人情和规则的冲突，需要窄门道德决策模型"
+    },
+    {
+      "id": "t03",
+      "prompt": "我朋友欠我10万不还，我起诉他能赢吗？",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "有明确法律途径的问题，应查法条而非窄门决策"
+    },
+    {
+      "id": "t04",
+      "prompt": "我想用价格战搞垮竞争对手，把价格降到成本以下，他们肯定撑不住。",
+      "expected_activation": false,
+      "expected_skill": "shafu-jipin",
+      "rationale": "这是竞争策略问题，应触发杀富济贫而非窄门"
+    },
+    {
+      "id": "t05",
+      "prompt": "今天穿什么衣服？",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "日常琐碎选择，不适用窄门决策"
+    },
+    {
+      "id": "t06",
+      "prompt": "公司给了我一个灰色地带的业务指标，不算违法但有点擦边球，我该接吗？",
+      "expected_activation": true,
+      "expected_skill": "zhaimen-juece",
+      "rationale": "法律上不明确但道德上需要判断的情境，典型的窄门场景"
+    },
+    {
+      "id": "t07",
+      "prompt": "我在路边看到一个人摔倒了，周围没人，我该扶吗？",
+      "expected_activation": false,
+      "expected_skill": "daai-buai-zhengjiu",
+      "rationale": "这是是否帮助他人的问题，应触发大爱不爱/救主批判"
+    },
+    {
+      "id": "t08",
+      "prompt": "竞争对手的报价单落在我桌上了，我是不是应该看一眼？反正没人知道我看过。",
+      "expected_activation": true,
+      "expected_skill": "zhaimen-juece",
+      "rationale": "无人监督时的利益诱惑，需要窄门道德决策"
+    }
+  ]
+}

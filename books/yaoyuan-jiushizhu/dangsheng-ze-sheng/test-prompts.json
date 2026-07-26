@@ -1,0 +1,61 @@
+{
+  "skill_id": "dangsheng-ze-sheng",
+  "test_prompts": [
+    {
+      "id": "t01",
+      "prompt": "我该不该辞职去创业？两边都有道理，算来算去算不清楚，拖了半年了。",
+      "expected_activation": true,
+      "expected_skill": "dangsheng-ze-sheng",
+      "rationale": "重大人生抉择，各方利益计算不清楚，需要当生则生决断"
+    },
+    {
+      "id": "t02",
+      "prompt": "我要不要和这个结婚？对方条件很好但我没有感觉，家里催得很紧。",
+      "expected_activation": true,
+      "expected_skill": "dangsheng-ze-sheng",
+      "rationale": "人生重大选择，理性和感性的冲突，需要当生则生框架"
+    },
+    {
+      "id": "t03",
+      "prompt": "今天中午吃面还是吃饭？",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "日常琐碎选择，不适用当生则生"
+    },
+    {
+      "id": "t04",
+      "prompt": "这两个方案哪个ROI更高？帮我算一下。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "需要数据分析的理性决策，不适用当生则生"
+    },
+    {
+      "id": "t05",
+      "prompt": "我最近太累了，什么都做不好，好想放弃。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "情绪不稳定，应先冷静，不适合当生则生决断"
+    },
+    {
+      "id": "t06",
+      "prompt": "我和两个同事竞争经理职位，他们资历都比我深，我该怎么办？",
+      "expected_activation": false,
+      "expected_skill": "buzheng-zhi-zheng",
+      "rationale": "竞争策略问题，应触发不争之争而非当生则生"
+    },
+    {
+      "id": "t07",
+      "prompt": "医生说我只剩三个月了，我是继续治疗还是放弃治疗去旅行？",
+      "expected_activation": true,
+      "expected_skill": "dangsheng-ze-sheng",
+      "rationale": "生死抉择，后果计算完全失效，需要当生则生终极决断"
+    },
+    {
+      "id": "t08",
+      "prompt": "公司要裁掉整个部门，我可以选择转岗去另一个城市，也可以拿赔偿走人，不知道怎么选。",
+      "expected_activation": true,
+      "expected_skill": "dangsheng-ze-sheng",
+      "rationale": "重大人生转折，双方都有道理，需要当生则生决断模型"
+    }
+  ]
+}

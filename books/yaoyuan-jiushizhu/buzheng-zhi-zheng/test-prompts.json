@@ -1,0 +1,61 @@
+{
+  "skill_id": "buzheng-zhi-zheng",
+  "test_prompts": [
+    {
+      "id": "t01",
+      "prompt": "我和两个同事都在竞争这个经理职位，他们资历都比我深，我该怎么办？",
+      "expected_activation": true,
+      "expected_skill": "buzheng-zhi-zheng",
+      "rationale": "多人竞争同一职位，典型的职场不争之争场景"
+    },
+    {
+      "id": "t02",
+      "prompt": "我们小公司想跟行业巨头抢一个项目，他们资源比我们多太多了，怎么赢？",
+      "expected_activation": true,
+      "expected_skill": "buzheng-zhi-zheng",
+      "rationale": "创业公司面对巨头竞争，需要不争之争策略分析"
+    },
+    {
+      "id": "t03",
+      "prompt": "我想用价格战把竞争对手打趴下，把价格降到成本以下，他们肯定撑不住。",
+      "expected_activation": false,
+      "expected_skill": "shafu-jipin",
+      "rationale": "这是主动攻击型的价格战策略，应触发杀富济贫而非不争之争"
+    },
+    {
+      "id": "t04",
+      "prompt": "我捡到一个钱包，里面有很多钱，没人看到，我该还回去吗？",
+      "expected_activation": false,
+      "expected_skill": "zhaimen-juece",
+      "rationale": "这是道德困境问题，应触发窄门决策模型"
+    },
+    {
+      "id": "t05",
+      "prompt": "考研还是工作？两个都有道理，我纠结了很久。",
+      "expected_activation": false,
+      "expected_skill": "dangsheng-ze-sheng",
+      "rationale": "重大人生抉择，各方利益计算不清楚，应触发当生则生"
+    },
+    {
+      "id": "t06",
+      "prompt": "部门里三个人都在抢一个晋升名额，另外两个走得特别近，我该怎么办？",
+      "expected_activation": true,
+      "expected_skill": "buzheng-zhi-zheng",
+      "rationale": "多人竞争有限资源，需要不争之争策略"
+    },
+    {
+      "id": "t07",
+      "prompt": "我们竞标一个大项目，对方是行业龙头，我们的方案更好但对方有关系。",
+      "expected_activation": true,
+      "expected_skill": "buzheng-zhi-zheng",
+      "rationale": "商业竞标面对强敌，需要不争之争策略分析"
+    },
+    {
+      "id": "t08",
+      "prompt": "今天中午吃什么？",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "日常琐碎选择，不适用任何竞争策略"
+    }
+  ]
+}

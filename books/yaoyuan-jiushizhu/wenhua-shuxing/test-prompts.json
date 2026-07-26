@@ -1,0 +1,61 @@
+{
+  "skill_id": "wenhua-shuxing",
+  "test_prompts": [
+    {
+      "id": "t01",
+      "prompt": "我们公司每次做改革都失败，制定了详细的计划，执行起来总是走样，换了好几拨管理层也没用。为什么？",
+      "expected_activation": true,
+      "expected_skill": "wenhua-shuxing",
+      "rationale": "用户问组织变革失败的深层原因，需要三层透视法从技术→制度→文化逐层深挖"
+    },
+    {
+      "id": "t02",
+      "prompt": "为什么我们团队总是重复同样的错误？每次复盘都说要改，下次还是老样子。",
+      "expected_activation": true,
+      "expected_skill": "wenhua-shuxing",
+      "rationale": "用户问团队重复失败模式，典型的文化属性分析场景"
+    },
+    {
+      "id": "t03",
+      "prompt": "这个bug怎么修？",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "纯技术问题，不适用文化属性分析"
+    },
+    {
+      "id": "t04",
+      "prompt": "服务器宕机了，快告诉我怎么恢复服务！",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "紧急危机处理，需要即时行动，不适用文化属性分析"
+    },
+    {
+      "id": "t05",
+      "prompt": "我想开一家奶茶店，对面已经有三家奶茶店了，怎么才能赢？",
+      "expected_activation": false,
+      "expected_skill": "buzheng-zhi-zheng",
+      "rationale": "这是竞争策略问题，应用不争之争而非文化属性分析"
+    },
+    {
+      "id": "t06",
+      "prompt": "为什么中国足球总是冲不出亚洲？换了好几个教练了。",
+      "expected_activation": true,
+      "expected_skill": "wenhua-shuxing",
+      "rationale": "用户问系统性失败的原因，需要技术→制度→文化三层透视"
+    },
+    {
+      "id": "t07",
+      "prompt": "为什么我们部门总是互相推诿，出了事谁都不承认？",
+      "expected_activation": true,
+      "expected_skill": "wenhua-shuxing",
+      "rationale": "用户问组织行为模式问题，需要文化属性框架分析"
+    },
+    {
+      "id": "t08",
+      "prompt": "我该不该跳槽？新公司工资高30%但离家远。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "个人职业选择，不是系统性问题，不适用文化属性分析"
+    }
+  ]
+}

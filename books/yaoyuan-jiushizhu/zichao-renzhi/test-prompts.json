@@ -1,0 +1,61 @@
+{
+  "skill_id": "zichao-renzhi",
+  "test_prompts": [
+    {
+      "id": "t01",
+      "prompt": "我创业失败了，但我觉得主要是因为市场环境不好，投资人都是短视的，如果他们有耐心我肯定能成。",
+      "expected_activation": true,
+      "expected_skill": "zichao-renzhi",
+      "rationale": "用户归咎于外部，需要自嘲认知校准——怒指乾坤错"
+    },
+    {
+      "id": "t02",
+      "prompt": "这个项目很简单，我三天就能搞定，他们怎么搞了三个月还没弄完？",
+      "expected_activation": true,
+      "expected_skill": "zichao-renzhi",
+      "rationale": "过度自信，坐井说天阔，需要自嘲框架校准认知"
+    },
+    {
+      "id": "t03",
+      "prompt": "我最近情绪很低落，感觉自己什么都做不好，活着没什么意思。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "用户情绪低落时需要安抚，不适合自嘲认知校准"
+    },
+    {
+      "id": "t04",
+      "prompt": "这道算法题的时间复杂度怎么分析？",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "纯技术问题讨论，不适用自嘲认知校准"
+    },
+    {
+      "id": "t05",
+      "prompt": "我坚持健身三年了，看到那些练了一个月就放弃的人，觉得他们太不自律了。",
+      "expected_activation": true,
+      "expected_skill": "zichao-renzhi",
+      "rationale": "用户表现出优越感和认知偏差，需要自嘲框架反思——醉舞经阁半卷书"
+    },
+    {
+      "id": "t06",
+      "prompt": "我和两个同事竞争经理职位，他们资历都比我深，我该怎么办？",
+      "expected_activation": false,
+      "expected_skill": "buzheng-zhi-zheng",
+      "rationale": "竞争策略问题，应触发不争之争而非自嘲"
+    },
+    {
+      "id": "t07",
+      "prompt": "我总觉得我写的代码是最好的，别人写的都有问题，但为什么每次评审都是别人通过我不通过？",
+      "expected_activation": true,
+      "expected_skill": "zichao-renzhi",
+      "rationale": "用户表现出过度自信和归因偏差，需要自嘲认知校准"
+    },
+    {
+      "id": "t08",
+      "prompt": "如果不是老板不支持，我那个项目肯定能做成。",
+      "expected_activation": true,
+      "expected_skill": "zichao-renzhi",
+      "rationale": "归因于外部，典型的"怒指乾坤错"，需要自嘲框架"
+    }
+  ]
+}

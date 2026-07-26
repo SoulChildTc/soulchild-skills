@@ -1,0 +1,61 @@
+{
+  "skill_id": "feiren-hua-shengchan",
+  "test_prompts": [
+    {
+      "id": "t01",
+      "prompt": "我们创业公司资金有限，想找农村的农户帮我们做零件加工，怎么设计这个模式？",
+      "expected_activation": true,
+      "expected_skill": "feiren-hua-shengchan",
+      "rationale": "用农户/个体户模式组织低成本生产，典型非人化生产场景"
+    },
+    {
+      "id": "t02",
+      "prompt": "我想把客服外包给个人在家办公的兼职人员，每个工单按件计费，这样可行吗？",
+      "expected_activation": true,
+      "expected_skill": "feiren-hua-shengchan",
+      "rationale": "将业务外包给个体户，按件计费，需要非人化生产框架分析"
+    },
+    {
+      "id": "t03",
+      "prompt": "我们想打造一个高端品牌，在瑞士建厂，用最好的材料做手表。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "高端品牌建设，充足的资本投入，不适用非人化生产"
+    },
+    {
+      "id": "t04",
+      "prompt": "我想用价格战打垮竞争对手，把价格降到成本以下。",
+      "expected_activation": false,
+      "expected_skill": "shafu-jipin",
+      "rationale": "这是竞争攻击策略，应触发杀富济贫而非非人化生产"
+    },
+    {
+      "id": "t05",
+      "prompt": "我们生产芯片需要无尘车间和精密仪器，必须严格管控每道工序。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "需要高度标准化和精密品控的制造，不适用非人化生产"
+    },
+    {
+      "id": "t06",
+      "prompt": "美团的外卖骑手都是外包的个体户，这种模式背后的逻辑是什么？",
+      "expected_activation": true,
+      "expected_skill": "feiren-hua-shengchan",
+      "rationale": "平台经济下的个体户模式，需要非人化生产框架分析"
+    },
+    {
+      "id": "t07",
+      "prompt": "我们想在公司附近租个厂房，招一批工人，正规化管理。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "常规生产组织方式，有足够的资本投入，不适用非人化生产"
+    },
+    {
+      "id": "t08",
+      "prompt": "我们公司想大幅降低生产成本，考虑把生产线外包给乡镇的小作坊，怎么设计才不会出问题？",
+      "expected_activation": true,
+      "expected_skill": "feiren-hua-shengchan",
+      "rationale": "将生产线外包给乡镇小作坊，极端的成本压缩，需要非人化生产框架"
+    }
+  ]
+}

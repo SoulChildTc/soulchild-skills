@@ -1,0 +1,61 @@
+{
+  "skill_id": "shafu-jipin",
+  "test_prompts": [
+    {
+      "id": "t01",
+      "prompt": "我想用低价策略打入市场，我们成本比行业老大低30%，可以打价格战。",
+      "expected_activation": true,
+      "expected_skill": "shafu-jipin",
+      "rationale": "创业公司计划用价格战冲击市场，典型的杀富济贫场景"
+    },
+    {
+      "id": "t02",
+      "prompt": "我们准备做一个颠覆性的产品，直接对标行业巨头，用更加便宜的方案抢占市场。",
+      "expected_activation": true,
+      "expected_skill": "shafu-jipin",
+      "rationale": "颠覆性商业模式对标行业巨头，需要杀富济贫框架评估"
+    },
+    {
+      "id": "t03",
+      "prompt": "我们公司经营一切正常，想优化一下流程，提高效率。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "常规经营优化，不涉及市场竞争攻击，不适用杀富济贫"
+    },
+    {
+      "id": "t04",
+      "prompt": "中国芯片市场每年增长30%，我们想在这个增量市场里分一杯羹。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "增量市场，蛋糕正在变大，不需要杀富济贫"
+    },
+    {
+      "id": "t05",
+      "prompt": "我朋友在路边乞讨，我应该给他钱吗？",
+      "expected_activation": false,
+      "expected_skill": "daai-buai-zhengjiu",
+      "rationale": "这是是否帮助他人的问题，应触发大爱不爱而非杀富济贫"
+    },
+    {
+      "id": "t06",
+      "prompt": "视频平台用补贴大战抢用户，烧钱把对手烧死后提价，这合理吗？",
+      "expected_activation": true,
+      "expected_skill": "shafu-jipin",
+      "rationale": "补贴价格战抢占市场，需要杀富济贫框架评估破坏性风险和受益者风险"
+    },
+    {
+      "id": "t07",
+      "prompt": "我们的新产品功能和行业老大一样，但价格只有一半，怎么做市场推广？",
+      "expected_activation": true,
+      "expected_skill": "shafu-jipin",
+      "rationale": "以低价挑战行业领导者，典型的杀富济贫场景"
+    },
+    {
+      "id": "t08",
+      "prompt": "这个行业正在快速增长，我们想进入但不知道该怎么做。",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "增量市场的常规进入决策，不适用杀富济贫"
+    }
+  ]
+}

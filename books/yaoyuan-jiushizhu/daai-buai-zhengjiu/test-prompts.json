@@ -1,0 +1,61 @@
+{
+  "skill_id": "daai-buai-zhengjiu",
+  "test_prompts": [
+    {
+      "id": "t01",
+      "prompt": "我弟弟总是找我借钱，每次都说最后一次，但从来不还，我该不该再帮他？",
+      "expected_activation": true,
+      "expected_skill": "daai-buai-zhengjiu",
+      "rationale": "面对反复求助的家人，需要评估帮助是否强化依赖心理，典型大爱不爱场景"
+    },
+    {
+      "id": "t02",
+      "prompt": "我们公司捐了很多钱给贫困山区，但几年过去了，他们还是那么穷，为什么？",
+      "expected_activation": true,
+      "expected_skill": "daai-buai-zhengjiu",
+      "rationale": "分析慈善/援助项目效果不佳的原因，需要大爱不爱框架"
+    },
+    {
+      "id": "t03",
+      "prompt": "有人掉进河里了，我不会游泳，怎么办？",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "紧急救助，命悬一线时应直接行动而非分析"
+    },
+    {
+      "id": "t04",
+      "prompt": "我想用价格战打垮竞争对手，把价格降到成本以下。",
+      "expected_activation": false,
+      "expected_skill": "shafu-jipin",
+      "rationale": "商业竞争策略，应触发杀富济贫而非大爱不爱"
+    },
+    {
+      "id": "t05",
+      "prompt": "路边有个人问我借10块钱坐公交，我该给吗？",
+      "expected_activation": false,
+      "expected_skill": null,
+      "rationale": "日常小额善举，不需要大爱不爱框架分析"
+    },
+    {
+      "id": "t06",
+      "prompt": "朋友公司要倒闭了，想让我投资入股帮他渡过难关，但我知道他的公司商业模式有问题，该不该帮？",
+      "expected_activation": true,
+      "expected_skill": "daai-buai-zhengjiu",
+      "rationale": "犹豫是否帮助朋友，需要评估帮助的长期效果——赋能还是强化依赖"
+    },
+    {
+      "id": "t07",
+      "prompt": "政府给贫困地区发钱发了很多年，为什么越扶越贫？",
+      "expected_activation": true,
+      "expected_skill": "daai-buai-zhengjiu",
+      "rationale": "分析输血式扶贫为何效果不佳，典型的大爱不爱场景"
+    },
+    {
+      "id": "t08",
+      "prompt": "为什么我们公司改革总是失败？",
+      "expected_activation": false,
+      "expected_skill": "wenhua-shuxing",
+      "rationale": "系统性组织问题分析，应触发文化属性框架而非大爱不爱"
+    }
+  ]
+}
