@@ -1097,7 +1097,24 @@ function hlText(html, q){
 }
 
 /* ══════════ 导航 ══════════ */
-function go(si,ii){ cur = {s:si,i:ii}; render(); }
+function go(si,ii){
+  // 越界保护：数据错误时给出可见提示，而不是渲染空白
+  if(!STAGES[si] || !STAGES[si].steps[ii]){
+    const msg = `数据错误：stages[${si}].steps[${ii}] 不存在。`
+      + `当前共 ${STAGES.length} 关，`
+      + (STAGES[si] ? `第 ${si+1} 关有 ${STAGES[si].steps.length} 页。` : `第 ${si+1} 关不存在。`);
+    document.getElementById("art").innerHTML =
+      `<div class="kicker">渲染失败</div><h2>这一页不存在</h2>`
+      + `<p class="lead">${esc(msg)}</p>`
+      + `<p style="color:var(--muted);font-size:14px;line-height:1.9">`
+      + `这是数据问题，不是页面问题。检查 DATA.stages 的结构，`
+      + `或跑 <code>python3 references/verify.py</code> 定位。</p>`;
+    console.error(msg);
+    return;
+  }
+  cur = {s:si,i:ii};
+  render();
+}
 function step(d){
   let si = cur.s, ii = cur.i+d;
   if(ii<0){ if(si>0){ si--; ii = STAGES[si].steps.length-1; } else return; }
