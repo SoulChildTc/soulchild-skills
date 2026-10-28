@@ -1,3 +1,5 @@
 .DS_Store
 .cangjie/
 __pycache__/
+docker-learn/
+holmesgpt-learn/
