@@ -13,6 +13,7 @@
 
 这样样式不会被 AI 每次重新发明。
 """
+import html as html_lib
 import json
 import os
 import re
@@ -136,14 +137,25 @@ def manual_check(data):
 
 
 def check(data):
-    errs = try_jsonschema(data)
-    if errs is None:
-        # 没装 jsonschema，走兜底
-        errs, pages = manual_check(data)
-        return errs, pages, "manual"
-    # 装了 jsonschema，再补跑兜底的中文提示（更友好）
-    _, pages = manual_check(data)
-    return errs, pages, "jsonschema"
+    """两份校验都跑，错误合并。
+
+    jsonschema 表达不了的检查（来源 key 存在性、角标越界、表格行列、
+    单页块数）只有 manual_check 有。装了 jsonschema 时不能丢掉它。
+    """
+    manual_errs, pages = manual_check(data)
+    schema_errs = try_jsonschema(data)
+
+    if schema_errs is None:
+        return manual_errs, pages, "manual"
+
+    # 去重：同一个问题两边都可能报，保留 manual 的中文版
+    seen = set(manual_errs)
+    merged = list(manual_errs)
+    for e in schema_errs:
+        if e not in seen:
+            merged.append(e)
+
+    return merged, pages, "schema+manual"
 
 
 # ══════════════════════════════════════════════════════════════
@@ -153,19 +165,38 @@ def build(data, out_path):
     tpl = open(TEMPLATE).read()
 
     payload = json.dumps(data, ensure_ascii=False, indent=1)
-    # 防止内容里出现 </script> 提前闭合
-    payload = payload.replace("</", "<\\/")
+    # 转义 < > &：同时干掉 </script>、<!--、<script 三种注入
+    # 用 \u003c 而不是 \/ —— 前者是 JSON 合法转义，json.loads 能还原
+    payload = (payload
+               .replace("<", "\\u003c")
+               .replace(">", "\\u003e")
+               .replace("&", "\\u0026"))
 
-    html = (tpl
-            .replace("{{LANG}}", "zh-CN")
-            .replace("{{PROJECT}}", data["project"])
-            .replace("{{DATA}}", payload))
+    # 单次替换：避免 project 里含 {{DATA}} 被二次扫描
+    def sub(m):
+        key = m.group(1)
+        if key == "LANG":
+            return "zh-CN"
+        if key == "PROJECT":
+            return html_lib.escape(data["project"])
+        if key == "DATA":
+            return payload
+        raise KeyError(f"未知占位符: {{{{key}}}}")
+
+    out = re.sub(r"\{\{(\w+)\}\}", sub, tpl)
+
+    # 断言模板里的占位符都换掉了。
+    # 只查模板原有的，不扫输出 —— 用户内容里可能真的含 {{...}}，
+    # 那是数据，不是漏替换。
+    left = set(re.findall(r"\{\{(\w+)\}\}", tpl)) - {"LANG", "PROJECT", "DATA"}
+    if left:
+        raise RuntimeError(f"模板里有未知占位符: {', '.join(sorted(left))}")
 
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with open(out_path, "w") as f:
-        f.write(html)
+        f.write(out)
 
-    return len(html)
+    return len(out)
 
 
 # ══════════════════════════════════════════════════════════════

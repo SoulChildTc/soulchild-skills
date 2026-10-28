@@ -434,22 +434,42 @@ grep -m1 '^version' Cargo.toml      # Rust
 **你只写 `content.json`，渲染交给 `build.py`。不要手写 HTML，不要改样式。**
 
 ```bash
-python3 build.py content.json          # 校验 + 生成 index.html
-python3 build.py content.json --check   # 只校验
-python3 lint.py content.json           # 内容质量检查
+python3 book.py check content.json    # 结构 + 文风 + 顺序，一次跑完
+python3 book.py build content.json    # 校验通过才生成 index.html
+python3 book.py all content.json      # 三步全跑
 ```
 
-三者的分工：
+只有一个入口。`check` 失败即停，不用自己判断先修哪个。
 
-| 文件 | 管什么 | 谁写 |
+文件分工：
+
+| 文件 | 管什么 | 谁改 |
 |---|---|---|
 | `content.json` | 全部内容 | **你** |
-| `assets/template.html` | 布局、样式、交互 | 不用动 |
-| `assets/schema.json` | 数据结构约束 | 不用动 |
-| `build.py` | 校验 + 注入 | 不用动 |
-| `lint.py` | 文风检查 | 不用动 |
+| `assets/template.html` | 布局、样式、交互 | 不改 |
+| `assets/schema.json` | 数据结构约束 | 不改 |
+| `assets/lint-rules.json` | 文风规则（词表、阈值） | **可改**，见下 |
+| `book.py` | 统一入口 | 不改 |
+| `build.py` `lint.py` `order.py` | 单项检查 | 不改 |
+| `references/verify.py` | 产物校验 | 不改 |
 
-**样式一致性靠这个流程保证，不靠 AI 记忆。** 你改不了样式，也就不会每次长得不一样。
+**样式一致性靠这个流程保证，不靠 AI 记忆。** 你只产出 JSON，
+碰不到 HTML 和 CSS，所以每次长得一样。
+
+**文风规则是数据，不是代码。** 觉得某个词该禁、某类加粗该少，
+改 `assets/lint-rules.json` 就行，`lint.py` 不用动：
+
+```json
+{
+  "existence": {
+    "rules": [{"id":"ai-tone","tokens":["值得注意的是","赋能"],"message":"AI 腔"}]
+  },
+  "conditional": {
+    "rules": [{"id":"vague-advice","first":["建议"],
+               "need_one_of":["\\d","<code>"],"message":"建议没给具体值"}]
+  }
+}
+```
 
 ### content.json 结构
 
@@ -539,13 +559,20 @@ python3 lint.py content.json           # 内容质量检查
 - 没有无来源的事实陈述
 
 ```bash
-python3 build.py content.json --check    # 结构合法
-python3 lint.py content.json             # 文风合格（AI 腔 / 空话 / 加粗）
-python3 order.py content.json            # 阅读顺序
-python3 references/verify.py index.html  # 渲染无错
+python3 book.py check content.json        # 结构 + 文风 + 顺序
+python3 references/verify.py index.html --expect content.json   # 产物无损
 ```
 
-四个都过，才算可以交付。
+两个都过，才算可以交付。
+
+`verify.py` 不复跑业务检查（那些 `check` 已经做了）。它只查三件
+**只有看产物才知道**的事：
+
+1. `DATA` 能不能完整还原（注入过程有没有损坏数据）
+2. HTML 结构有没有被内容破坏（`<script>` 闭合、占位符残留）
+3. 覆盖率达标（可选 `--coverage`）
+
+`--expect content.json` 做往返比对，是唯一能发现「生成时数据被改坏」的检查。
 
 `order.py` 检查的是**概念依赖**：
 

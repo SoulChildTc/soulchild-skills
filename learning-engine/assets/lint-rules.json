@@ -1,0 +1,94 @@
+{
+  "_comment": "文风规则。改这里就能调整检查标准，不用动 lint.py。",
+
+  "existence": {
+    "_comment": "出现即报。这类词在技术写作里没有信息量。",
+    "level": "error",
+    "rules": [
+      {
+        "id": "ai-tone",
+        "tokens": ["值得注意的是", "换句话说", "总的来说", "综上所述", "总而言之", "不难看出", "显而易见", "众所周知", "毋庸置疑"],
+        "message": "AI 腔"
+      },
+      {
+        "id": "hype",
+        "tokens": ["至关重要", "极其重要", "非常实用", "强大无比", "颠覆性", "革命性"],
+        "message": "过度吹捧"
+      },
+      {
+        "id": "jargon",
+        "tokens": ["赋能", "闭环", "抓手", "打法", "颗粒度", "顶层设计", "组合拳"],
+        "message": "黑话"
+      },
+      {
+        "id": "contrast-pattern",
+        "tokens": ["不仅仅是", "不只是"],
+        "message": "「不只是 X 而是 Y」句式，X 和 Y 分开讲"
+      }
+    ]
+  },
+
+  "conditional": {
+    "_comment": "出现 first 但同一句里没有 second，说明是空话。",
+    "level": "warn",
+    "rules": [
+      {
+        "id": "vague-advice",
+        "first": ["建议", "可以考虑", "推荐"],
+        "need_one_of": ["\\d", "<code>", "`[^`]+`", "(?:^|\\s)--?[a-zA-Z]"],
+        "message": "建议没给具体值"
+      },
+      {
+        "id": "vague-action",
+        "first": ["调整", "优化", "关注", "处理", "改进", "完善", "把握"],
+        "need_one_of": ["\\d", "<code>", "改成", "换成", "设为", "设置成", "加上", "删掉"],
+        "message": "只有空动作，没有具体做法"
+      },
+      {
+        "id": "vague-quantity",
+        "first": ["大概", "大约", "左右", "差不多"],
+        "need_one_of": ["\\d"],
+        "message": "模糊量化"
+      }
+    ]
+  },
+
+  "occurrence": {
+    "_comment": "单个页面里某类标记出现次数超限。",
+    "level": "warn",
+    "rules": [
+      {
+        "id": "bold-density",
+        "tokens": ["<strong>", "<b>"],
+        "max": 2,
+        "message": "加粗过多，一页最多两处"
+      }
+    ]
+  },
+
+  "length": {
+    "_comment": "文本长度阈值。",
+    "level": "warn",
+    "rules": [
+      {
+        "id": "long-paragraph",
+        "type": "p",
+        "max_chars": 220,
+        "message": "段落过长，建议拆成两段"
+      }
+    ]
+  },
+
+  "aggregate": {
+    "_comment": "聚合阈值：同类问题累计超过 N 处就升级为错误。",
+    "warn_to_error_at": 3
+  },
+
+  "domain": {
+    "_comment": "领域规则，通用工具没有的这些。",
+    "check_title_count": true,
+    "check_source_kind_mix": true,
+    "check_thin_reference": true,
+    "thin_reference_min_chars": 12
+  }
+}

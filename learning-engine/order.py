@@ -30,6 +30,9 @@ import json
 import re
 import sys
 
+sys.path.insert(0, __file__.rsplit("/", 1)[0])
+from _common import plain, load
+
 # ── 这些不算术语：命令本身、通用词、单位 ──
 STOP = set("""
 docker run ps images start stop kill rm create exec logs inspect stats top diff cp
@@ -40,10 +43,6 @@ bash sh sh -it -i -t -d -p -v -f -m -u -e
 true false none null yes no
 localhost stdout stdin stderr exit
 """.split())
-
-
-def plain(t):
-    return re.sub(r"<[^>]+>", "", t or "")
 
 
 def extract_terms(blocks):
@@ -208,7 +207,10 @@ def main():
         sys.exit(2)
 
     strict = "--strict" in sys.argv
-    data = json.load(open(sys.argv[1]))
+    data, err = load(sys.argv[1])
+    if err:
+        print(f"❌ {err}")
+        sys.exit(1)
 
     errors, warns, npages, nforward = check(data)
 

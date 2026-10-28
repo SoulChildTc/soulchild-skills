@@ -1,189 +1,243 @@
 #!/usr/bin/env python3
 """
-校验 learning-engine 产出的 HTML。
+校验产出的 HTML。
 
-用法：python3 verify.py output.html [--coverage coverage.json]
+和 build.py 的分工：
+    build.py  校验 content.json（数据对不对）
+    verify.py 校验 index.html（注入有没有损坏）
 
-检查项：
-  1. slug 存在（localStorage 隔离）
-  2. 每页角标 {{n}} 不越界
-  3. 每页有来源
-  4. 来源 key 存在
-  5. 标题里的数字与实际条目数一致
-  6. 参考条目字段完整
-  7. 覆盖度（如果提供 coverage.json）
+不重复业务检查 —— 那些 build.py 已经做过了。这里只验三件
+「只有看产物才知道」的事：
+
+    1. DATA 能不能完整还原回来（注入过程有没有损坏）
+    2. HTML 结构有没有被内容破坏（script 标签闭合、占位符残留）
+    3. 覆盖率文件（可选）
+
+用法：
+    python3 verify.py index.html
+    python3 verify.py index.html --coverage coverage.json
+    python3 verify.py index.html --expect content.json    # 往返比对
 """
 import json
 import re
 import sys
-import os
+
+sys.path.insert(0, __file__.rsplit("/", 1)[0].rsplit("/", 1)[0])
+from _common import load
 
 
-def load_data(html):
-    """从 HTML 里抠出 DATA。支持任意缩进（json.dumps 有无 indent 都行）。"""
-    m = re.search(r'const DATA = (\{.*?\});\s*\n', html, re.S)
-    if not m:
-        # 兜底：从 const DATA = 到 const SRC 之间
-        m2 = re.search(r'const DATA = (\{.*?\})\s*;', html, re.S)
-        if not m2:
-            return None
-        m = m2
-    try:
-        return json.loads(m.group(1))
-    except json.JSONDecodeError as e:
-        print(f"FAIL: DATA 不是合法 JSON: {e}")
-        # 打印出错位置附近内容，方便定位
-        raw = m.group(1)
-        pos = getattr(e, "pos", 0)
-        print(f"  位置 {pos} 附近: ...{raw[max(0,pos-60):pos+60]}...")
-        return None
+def extract_payload(html):
+    """从 HTML 里抠出 DATA 的 JSON 原文。
+
+    支持两种写法：
+        const DATA = {...};
+        <script type="application/json" id="data">{...}</script>
+    """
+    m = re.search(r"const DATA = (\{.*?\});\s*\n", html, re.S)
+    if m:
+        return m.group(1)
+
+    m = re.search(r'<script[^>]*id="data"[^>]*>(.*?)</script>', html, re.S)
+    if m:
+        return m.group(1)
+
+    return None
 
 
-CN = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
-      "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+def unescape_json(raw):
+    """还原 \\u003c 这类转义，让 JSON 能被 json.loads 解析。
+
+    json.loads 本来就能处理 \\u003c，所以这里其实不需要做什么。
+    保留这个函数是为了显式说明：转义是合法的 JSON，不是字符串替换。
+    """
+    return raw
 
 
-def check(data):
+def check_structure(html):
+    """HTML 结构完整性。这类问题 build.py 看不到。"""
     errors = []
-    warnings = []
+    warns = []
 
-    if not data.get("slug"):
-        errors.append("slug 缺失，进度会与其他页面串台")
+    # script 标签必须成对
+    opens = len(re.findall(r"<script\b", html))
+    closes = len(re.findall(r"</script>", html))
+    if opens != closes:
+        errors.append(
+            f"script 标签不配对：{opens} 个 <script>，{closes} 个 </script>。"
+            f"通常是内容里含 <!--<script> 之类的片段破坏了 HTML 解析"
+        )
 
-    stages = data.get("stages") or []
-    if not stages:
-        errors.append("stages 为空，页面无内容")
+    # 占位符不该残留
+    left = set(re.findall(r"\{\{(\w+)\}\}", html))
+    known = {"LANG", "PROJECT", "DATA"}
+    if left & known:
+        errors.append(f"模板占位符没替换：{', '.join(sorted(left & known))}")
 
-    sources = data.get("sources") or {}
-    total_steps = 0
+    # 必须有内容容器
+    for marker, desc in [
+        ('id="toc"', "左侧目录"),
+        ('id="main"', "正文区"),
+        ('const DATA =', "数据"),
+    ]:
+        if marker not in html:
+            errors.append(f"缺少{desc}（找不到 {marker}）")
 
-    for st in stages:
-        name = st.get("name", "?")
-        for ii, sp in enumerate(st.get("steps") or []):
-            total_steps += 1
-            loc = f"{name} 第{ii+1}页「{sp.get('title','?')}」"
-            keys = sp.get("sources") or []
+    # 空数据
+    if "const DATA = {}" in html or "const DATA = {\n}" in html:
+        errors.append("DATA 是空对象")
 
-            if not keys:
-                errors.append(f"{loc} 没有来源")
+    return errors, warns
 
-            for k in keys:
-                if k not in sources:
-                    errors.append(f"{loc} 引用了不存在的来源 key: {k}")
 
-            blob = json.dumps(sp.get("blocks") or [], ensure_ascii=False)
-            for num in re.findall(r'\{\{(\d+)\}\}', blob):
-                n = int(num)
-                if n < 1 or n > len(keys):
-                    errors.append(f"{loc} 角标 {{{{{n}}}}} 超出 {len(keys)} 条来源")
+def check_roundtrip(html, content_path):
+    """把 HTML 里的 DATA 抠出来，和原始 content.json 比对。
 
-            if not sp.get("blocks"):
-                errors.append(f"{loc} 内容为空")
+    这是唯一能发现「注入过程损坏了数据」的检查。
+    """
+    errors = []
 
-            # 标题数字核对：只认「二三四…」+ 明确量词
-            t = sp.get("title", "")
-            m = re.match(r"^[^：:]*[：:]\s*([二三四五六七八九十]+)\s*[种个类条]", t)
-            if m and m.group(1) in CN:
-                claimed = CN[m.group(1)]
-                actual = 0
-                for b in sp.get("blocks") or []:
-                    if b.get("type") in ("opts", "ul", "ol"):
-                        actual = max(actual, len(b.get("items") or []))
-                if actual and claimed != actual:
-                    errors.append(f"{loc} 标题称 {claimed}，实际 {actual}")
+    raw = extract_payload(html)
+    if raw is None:
+        return ["找不到 DATA，无法做往返比对"]
 
-    ref = data.get("reference") or []
-    for r in ref:
-        if not r.get("cat"):
-            errors.append(f"参考条目缺分类: {r.get('key','?')}")
-        if not r.get("key"):
-            errors.append(f"参考条目缺 key: {r}")
-        if not r.get("short"):
-            errors.append(f"参考条目缺一句话说明: {r.get('key','?')}")
-        if not (r.get("doc") or "").strip():
-            warnings.append(f"参考条目「{r.get('key','?')}」只有一句话，没有细节")
+    try:
+        embedded = json.loads(unescape_json(raw))
+    except json.JSONDecodeError as e:
+        return [f"HTML 里的 DATA 不是合法 JSON：{e.msg}（位置 {e.pos}）"]
 
-    # 参考分类不能只有一个（说明可能没抽全）
-    cats = {r.get("cat") for r in ref if r.get("cat")}
-    if len(ref) > 20 and len(cats) < 2:
-        warnings.append(f"{len(ref)} 条参考只分了 1 类，检查是不是该按用途分组")
+    original, err = load(content_path)
+    if err:
+        return [f"读不到对照文件：{err}"]
 
-    return errors, warnings, total_steps, len(ref), len(cats)
+    if embedded != original:
+        # 找第一处不同，给出定位
+        def diff(a, b, path=""):
+            if type(a) is not type(b):
+                return f"{path}: 类型不同 {type(a).__name__} vs {type(b).__name__}"
+            if isinstance(a, dict):
+                for k in set(a) | set(b):
+                    if k not in a:
+                        return f"{path}.{k}: 只在产出里有"
+                    if k not in b:
+                        return f"{path}.{k}: 只在源文件里有"
+                    d = diff(a[k], b[k], f"{path}.{k}")
+                    if d:
+                        return d
+            elif isinstance(a, list):
+                if len(a) != len(b):
+                    return f"{path}: 长度不同 {len(a)} vs {len(b)}"
+                for i, (x, y) in enumerate(zip(a, b)):
+                    d = diff(x, y, f"{path}[{i}]")
+                    if d:
+                        return d
+            elif a != b:
+                sa, sb = str(a)[:40], str(b)[:40]
+                return f"{path}: {sa!r} vs {sb!r}"
+            return None
+
+        d = diff(embedded, original) or "未知差异"
+        errors.append(f"产出的 DATA 和源文件不一致 — {d}")
+    else:
+        # 顺手统计一下规模
+        n_stages = len(original.get("stages") or [])
+        n_pages = sum(len(s.get("steps") or []) for s in original.get("stages") or [])
+        errors.append(None)  # 占位，下面过滤
+
+    return [e for e in errors if e]
 
 
 def check_coverage(path):
-    """读 coverage.json：{ "total": 104, "written": 98, "skipped": [...] }"""
-    try:
-        c = json.load(open(path))
-    except Exception as e:
-        return None, f"coverage 文件读不了: {e}"
+    """可选：覆盖度文件。"""
+    d, err = load(path)
+    if err:
+        return f"覆盖度文件读不了：{err}"
 
-    total = c.get("total") or 0
-    written = c.get("written") or 0
+    total = d.get("total") or 0
+    written = d.get("written") or 0
     if total <= 0:
-        return None, "coverage.total 必须大于 0"
+        return "coverage.total 必须大于 0"
+
+    skipped = d.get("skipped") or []
+    no_reason = [s for s in skipped if not s.get("reason")]
+    if no_reason:
+        return f"{len(no_reason)} 个跳过项没写原因"
 
     pct = written / total * 100
-    skipped = c.get("skipped") or []
-    bad_skip = [s for s in skipped if not s.get("reason")]
-
-    msgs = []
-    if 0 < len(skipped) and bad_skip:
-        msgs.append(f"{len(bad_skip)} 个跳过项没有写原因")
-
-    return (pct, written, total, skipped), "; ".join(msgs) if msgs else None
+    if pct < 80:
+        return f"覆盖度 {pct:.1f}% < 80%，不合格"
+    if pct < 95:
+        return f"覆盖度 {pct:.1f}%，需在 intro 说明没覆盖什么"
+    return None
 
 
 def main():
     if len(sys.argv) < 2:
-        print("用法: python3 verify.py output.html [--coverage coverage.json]")
+        print(__doc__)
         sys.exit(2)
 
-    html = open(sys.argv[1]).read()
-    data = load_data(html)
-    if data is None:
+    html_path = sys.argv[1]
+    try:
+        html = open(html_path).read()
+    except FileNotFoundError:
+        print(f"❌ 文件不存在: {html_path}")
         sys.exit(1)
 
-    errors, warnings, steps, nref, ncats = check(data)
+    errors = []
+    warns = []
 
-    cov_path = None
+    e, w = check_structure(html)
+    errors += e
+    warns += w
+
+    expect = None
+    if "--expect" in sys.argv:
+        i = sys.argv.index("--expect")
+        if i + 1 < len(sys.argv):
+            expect = sys.argv[i + 1]
+
+    if expect:
+        errors += check_roundtrip(html, expect)
+
+    cov_msg = None
     if "--coverage" in sys.argv:
         i = sys.argv.index("--coverage")
         if i + 1 < len(sys.argv):
-            cov_path = sys.argv[i + 1]
+            cov_msg = check_coverage(sys.argv[i + 1])
+            if cov_msg:
+                errors.append(cov_msg)
 
-    cov_result = None
-    if cov_path:
-        cov_result, cov_msg = check_coverage(cov_path)
-        if cov_msg:
-            errors.append(cov_msg)
+    # 统计
+    raw = extract_payload(html)
+    stats = ""
+    if raw:
+        try:
+            d = json.loads(raw)
+            n_stages = len(d.get("stages") or [])
+            n_pages = sum(len(s.get("steps") or []) for s in d.get("stages") or [])
+            n_ref = len(d.get("reference") or [])
+            n_cat = len({r.get("cat") for r in d.get("reference") or [] if r.get("cat")})
+            stats = f"{n_stages} 章  {n_pages} 节  {n_ref} 条参考  {n_cat} 个分类"
+        except Exception:
+            pass
 
     if errors:
-        print(f"\n{len(errors)} 个错误：\n")
+        print(f"\n✗ {len(errors)} 个问题\n")
         for e in errors:
-            print("  ✗", e)
-    if warnings:
-        print(f"\n{len(warnings)} 个提醒：\n")
-        for w in warnings[:10]:
-            print("  !", w)
-    if errors:
+            print("   ", e)
         sys.exit(1)
 
-    line = f"OK  {len(data['stages'])} 关  {steps} 页  {nref} 条参考  {ncats} 个分类"
+    if warns:
+        print(f"\n! {len(warns)} 条提醒\n")
+        for w in warns:
+            print("   ", w)
 
-    if cov_result:
-        pct, written, total, skipped = cov_result
-        line += f"  覆盖 {written}/{total} = {pct:.1f}%"
-        if pct < 80:
-            print(line)
-            print("\n  ✗ 覆盖度 < 80%，不合格")
-            sys.exit(1)
-        elif pct < 95:
-            print(line)
-            print(f"\n  ! 覆盖度 {pct:.1f}%，需在 intro 说明没覆盖什么")
-            sys.exit(0)
+    size_kb = len(html) / 1024
+    print(f"OK  {stats}  {size_kb:.0f} KB")
 
-    print(line)
+    if expect:
+        print("    往返比对一致")
+    if cov_msg is None and "--coverage" in sys.argv:
+        print("    覆盖度达标")
 
 
 if __name__ == "__main__":
