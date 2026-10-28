@@ -368,7 +368,7 @@ sup.cit:hover{background:rgba(168,56,28,.14)}
 .pageFoot .pg{
   flex:1;text-align:left;padding:15px 17px;
   border:1px solid var(--line2);border-radius:7px;background:var(--paper);
-  transition:.16s;
+  transition:.16s;text-decoration:none;color:inherit;display:block;
 }
 .pageFoot .pg:hover{border-color:var(--line3);background:var(--wash)}
 .pageFoot .pg .lbl{
@@ -943,9 +943,17 @@ function pageFootHTML(){
   const prev = ps>=0
     ? `<button class="pg" onclick="go(${ps},${pi})"><span class="lbl">上一页</span><span class="ttl">${esc(STAGES[ps].steps[pi].title)}</span></button>`
     : `<div class="pg dis"><span class="lbl">上一页</span><span class="ttl">已经在开头</span></div>`;
-  const next = ns>=0
-    ? `<button class="pg next" onclick="go(${ns},${ni})"><span class="lbl">下一页</span><span class="ttl">${esc(STAGES[ns].steps[ni].title)}</span></button>`
-    : `<button class="pg next" onclick="goMap()"><span class="lbl">结束</span><span class="ttl">回目录</span></button>`;
+
+  // 分册：最后一页指向下一册
+  let next;
+  if(ns>=0){
+    next = `<button class="pg next" onclick="go(${ns},${ni})"><span class="lbl">下一页</span><span class="ttl">${esc(STAGES[ns].steps[ni].title)}</span></button>`;
+  } else {
+    const nx = DATA.series && DATA.series.next;
+    next = nx
+      ? `<a class="pg next" href="${esc(nx.path)}"><span class="lbl">读完了 · 下一册</span><span class="ttl">${esc(nx.title)}</span></a>`
+      : `<button class="pg next" onclick="goMap()"><span class="lbl">结束</span><span class="ttl">回目录</span></button>`;
+  }
   return `<div class="pageFoot">${prev}${next}</div>`;
 }
 
