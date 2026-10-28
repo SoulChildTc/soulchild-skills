@@ -15,9 +15,21 @@ npx skills add SoulChildTc/soulchild-skills --skill code-expolorer
 npx skills add SoulChildTc/soulchild-skills --skill opencode-dev
 npx skills add SoulChildTc/soulchild-skills --skill prompt-gen
 npx skills add SoulChildTc/soulchild-skills --skill skill-architecture-guide
+npx skills add SoulChildTc/soulchild-skills --skill learning-engine
 ```
 
 ---
+
+## learning-engine
+
+给任意开源项目生成一页可离线阅读的学习读本。分阶段、一屏一页、每条事实带来源角标、右侧常驻参数速查。
+
+不是为了写综述，是为了让某个人按他自己会用的顺序，把某个项目学会。上手、二开、选型、讲清楚，四种目的对应四种深度——读源码不等于学得更好。
+
+**适合场景：** 系统学一个新项目、接手前先建立全景、给自己做参考资料
+**触发方式：** `帮我学 XX`、`给 XX 做个学习页`、`这个项目的原理和用法`
+
+[→ SKILL.md](./learning-engine/SKILL.md)
 
 ## code-expolorer
 
