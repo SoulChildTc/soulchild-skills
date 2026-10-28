@@ -408,6 +408,8 @@ grep -m1 '^version' Cargo.toml      # Rust
 
 ### 硬规则：
 
+- **「建议」是好的，前提是给出具体值**。`建议把 --max-steps 设在 15–20`
+  是好句子；`建议根据情况调整` 是空话。区别在于有没有替读者做决定。
 - **数字必须能数出来**。标题写"三种方式"，正文就得恰好三条。
 - **术语首次出现给定义**。不要假设读者知道 toolset、middleware、operator 是什么。
 - **配置入口首次出现必须点名类型**：`--flag` 是命令行参数，`UPPER_SNAKE` 是环境变量，
@@ -538,7 +540,7 @@ python3 lint.py content.json           # 内容质量检查
 
 ```bash
 python3 build.py content.json --check    # 结构合法
-python3 lint.py content.json             # 文风合格
+python3 lint.py content.json             # 文风合格（AI 腔 / 空话 / 加粗）
 python3 order.py content.json            # 阅读顺序
 python3 references/verify.py index.html  # 渲染无错
 ```
