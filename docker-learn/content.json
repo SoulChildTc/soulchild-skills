@@ -1,0 +1,1497 @@
+{
+ "slug": "docker-vol1",
+ "project": "Docker",
+ "subtitle": "单机容器",
+ "intro": "本读本基于 Docker 29.8.2（client 与 daemon 同版本）、Compose 5.5.0、Buildx 0.37.2。之后版本的变化不在本文档范围内。覆盖单机容器的日常使用：跑起来、容器的一生、镜像、数据与网络、排障。",
+ "version": "Docker 29.8.2 · Compose 5.5.0 · Buildx 0.37.2",
+ "sources": {
+  "ver": {
+   "kind": "run",
+   "path": "docker --version",
+   "line": null,
+   "href": "",
+   "why": "29.8.2，本文档依据的版本"
+  },
+  "help": {
+   "kind": "run",
+   "path": "docker --help",
+   "line": null,
+   "href": "",
+   "why": "命令清单来源"
+  },
+  "runhelp": {
+   "kind": "run",
+   "path": "docker run --help",
+   "line": null,
+   "href": "",
+   "why": "100 个 flag 及默认值"
+  },
+  "pshelp": {
+   "kind": "run",
+   "path": "docker ps --help",
+   "line": null,
+   "href": "",
+   "why": "ps 的过滤与格式参数"
+  },
+  "exit0": {
+   "kind": "run",
+   "path": "docker run --rm alpine sh -c 'exit 0'",
+   "line": null,
+   "href": "",
+   "why": "实测退出码 0"
+  },
+  "exit1": {
+   "kind": "run",
+   "path": "docker run --rm alpine sh -c 'exit 1'",
+   "line": null,
+   "href": "",
+   "why": "实测退出码 1"
+  },
+  "exit127": {
+   "kind": "run",
+   "path": "docker run --rm alpine nosuchcmd",
+   "line": null,
+   "href": "",
+   "why": "实测退出码 127（命令不存在）"
+  },
+  "exit125": {
+   "kind": "run",
+   "path": "docker run --rm nosuchimage12345",
+   "line": null,
+   "href": "",
+   "why": "实测退出码 125（docker 自身错误）"
+  },
+  "psdef": {
+   "kind": "run",
+   "path": "docker ps vs docker ps -a",
+   "line": null,
+   "href": "",
+   "why": "实测：默认只列 running，-a 才含 exited"
+  },
+  "rmflag": {
+   "kind": "run",
+   "path": "docker run --rm --name gone alpine true",
+   "line": null,
+   "href": "",
+   "why": "实测：--rm 后容器不出现在 ps -a"
+  },
+  "vbind": {
+   "kind": "run",
+   "path": "docker run -v /tmp/vtest:/data alpine",
+   "line": null,
+   "href": "",
+   "why": "实测：绑定挂载写入宿主目录"
+  },
+  "vname": {
+   "kind": "run",
+   "path": "docker volume create && -v vtest1:/data",
+   "line": null,
+   "href": "",
+   "why": "实测：命名卷跨容器持久"
+  },
+  "docs": {
+   "kind": "doc",
+   "path": "docs.docker.com/reference/cli/docker/",
+   "line": null,
+   "href": "https://docs.docker.com/reference/cli/docker/",
+   "why": "命令参考总览"
+  },
+  "arch": {
+   "kind": "doc",
+   "path": "docs.docker.com/engine/architecture/",
+   "line": null,
+   "href": "https://docs.docker.com/engine/architecture/",
+   "why": "daemon / containerd / runc 分层"
+  },
+  "oci": {
+   "kind": "doc",
+   "path": "opencontainers.org",
+   "line": null,
+   "href": "https://opencontainers.org/",
+   "why": "OCI 镜像与运行时规范"
+  }
+ },
+ "stages": [
+  {
+   "name": "全貌",
+   "desc": "先搞清楚 Docker 到底管什么、不管什么，以及它在你机器上以什么形态存在。",
+   "steps": [
+    {
+     "title": "容器不是轻量虚拟机",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "虚拟机模拟一台完整的机器，有自己的内核。容器没有——它和宿主机共用内核，只是被限制了能看见什么、能用多少资源。{{1}}"
+      },
+      {
+       "type": "p",
+       "text": "这个区别决定了三件事：容器启动是毫秒级（不用引导内核），容器镜像小（不含内核），以及<strong>容器里不能跑别的内核</strong>（Linux 容器跑不了 Windows）。"
+      },
+      {
+       "type": "table",
+       "head": [
+        "",
+        "虚拟机",
+        "容器"
+       ],
+       "rows": [
+        [
+         "内核",
+         "自己一份",
+         "共用宿主机的"
+        ],
+        [
+         "启动",
+         "秒级到分钟",
+         "毫秒级"
+        ],
+        [
+         "体积",
+         "GB 起",
+         "MB 起"
+        ],
+        [
+         "隔离",
+         "硬件级",
+         "内核级（namespace + cgroup）"
+        ],
+        [
+         "能跑别的 OS",
+         "能",
+         "不能"
+        ]
+       ]
+      },
+      {
+       "type": "note",
+       "text": "共用内核是理解后面所有安全边界的起点。容器逃逸之所以存在，就是因为内核是共用的。"
+      }
+     ],
+     "sources": [
+      "arch",
+      "oci"
+     ]
+    },
+    {
+     "title": "四个组件分别管什么",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "你在终端敲的 <code>docker</code> 只是个客户端。真正干活的是后台的 daemon，它再把具体的活派给 containerd 和 runc。{{1}}"
+      },
+      {
+       "type": "table",
+       "head": [
+        "组件",
+        "管什么",
+        "出问题时你会看到"
+       ],
+       "rows": [
+        [
+         "docker（CLI）",
+         "解析你的命令，发 HTTP 请求给 daemon",
+         "连接不上 daemon"
+        ],
+        [
+         "dockerd",
+         "API 服务、镜像管理、网络、卷",
+         "daemon 起不来"
+        ],
+        [
+         "containerd",
+         "容器生命周期、镜像拉取",
+         "容器状态卡住"
+        ],
+        [
+         "runc",
+         "真正创建进程、设置 namespace",
+         "OCI runtime error"
+        ]
+       ]
+      },
+      {
+       "type": "p",
+       "text": "日常你只需要和第一层打交道。后三层的意义在于：<strong>看到报错时知道去找谁</strong>。"
+      },
+      {
+       "type": "code",
+       "code": "docker info | grep -E 'Server Version|Storage Driver|Cgroup'",
+       "lang": "bash"
+      },
+      {
+       "type": "note",
+       "text": "这四条命令能看出 daemon 的版本、存储驱动、cgroup 版本。排障时先跑这个。"
+      }
+     ],
+     "sources": [
+      "arch",
+      "help"
+     ]
+    },
+    {
+     "title": "镜像和容器的关系",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "镜像是只读的模板，容器是镜像加一层可写层。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "# 镜像：静态的\n# 容器：镜像 + 可写层\n\ndocker images          # 看有哪些镜像\ndocker ps -a           # 看有哪些容器",
+       "lang": "bash"
+      },
+      {
+       "type": "p",
+       "text": "容器里改文件不会影响镜像。删了容器，可写层就没了——这是新手丢数据的第一个原因。"
+      },
+      {
+       "type": "warn",
+       "text": "<b>不要往容器里存数据。</b>停掉容器数据就没了，除非你用了卷（第五关讲）。"
+      },
+      {
+       "type": "table",
+       "head": [
+        "",
+        "镜像",
+        "容器"
+       ],
+       "rows": [
+        [
+         "是什么",
+         "只读模板",
+         "镜像 + 可写层"
+        ],
+        [
+         "能被删吗",
+         "能，但要先删依赖它的容器",
+         "能"
+        ],
+        [
+         "改了会怎样",
+         "要重新 build",
+         "只影响这个容器"
+        ],
+        [
+         "跨机器搬",
+         "docker save / push",
+         "不能直接搬，用镜像重建"
+        ]
+       ]
+      },
+      {
+       "type": "note",
+       "text": "这一章讲了三个最基础的东西：容器不是轻量虚拟机、四个组件的分工、镜像和容器的关系。后面所有章节都建立在这三个概念上。"
+      }
+     ],
+     "sources": [
+      "docs",
+      "vbind"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "装好并跑起来",
+   "desc": "装什么版本、跑通第一个容器、看懂它输出的每一行。",
+   "steps": [
+    {
+     "title": "装之前先确认版本",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "本文档基于 <strong>Docker 29.8.2</strong>（客户端与 daemon 同版本），Compose 5.5.0，Buildx 0.37.2。{{1}}"
+      },
+      {
+       "type": "p",
+       "text": "装完后第一件事是确认版本，因为不同大版本的默认行为会变："
+      },
+      {
+       "type": "code",
+       "code": "docker --version\ndocker compose version --short\ndocker buildx version",
+       "lang": "bash"
+      },
+      {
+       "type": "table",
+       "head": [
+        "平台",
+        "安装方式",
+        "备注"
+       ],
+       "rows": [
+        [
+         "macOS",
+         "Docker Desktop 或 OrbStack",
+         "Desktop 需要商业授权（大公司）"
+        ],
+        [
+         "Linux",
+         "官方仓库 apt/dnf",
+         "不要用发行版自带的老版本"
+        ],
+        [
+         "Windows",
+         "Docker Desktop + WSL2",
+         "必须启用 WSL2 后端"
+        ]
+       ]
+      },
+      {
+       "type": "note",
+       "text": "macOS 上 Docker 实际跑在一个轻量 Linux 虚拟机里（OrbStack 是 LinuxKit VM）。所以你看到的「本机」其实是那台虚拟机。"
+      }
+     ],
+     "sources": [
+      "ver",
+      "docs"
+     ]
+    },
+    {
+     "title": "第一条命令，逐行看懂",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "跑一个容器试试。"
+      },
+      {
+       "type": "code",
+       "code": "docker run hello-world",
+       "lang": "bash"
+      },
+      {
+       "type": "p",
+       "text": "输出会告诉你：拉取镜像 → 创建容器 → 运行 → 退出。这四步是每次 <code>run</code> 都在做的事。"
+      },
+      {
+       "type": "p",
+       "text": "再看一个能停留的："
+      },
+      {
+       "type": "code",
+       "code": "docker run -d -p 8080:80 --name web nginx:latest\ndocker ps\ndocker logs web",
+       "lang": "bash"
+      },
+      {
+       "type": "kv",
+       "items": [
+        [
+         "-d",
+         "后台运行（detach），不占住终端"
+        ],
+        [
+         "-p 8080:80",
+         "把宿主机 8080 映射到容器 80"
+        ],
+        [
+         "--name web",
+         "给容器起名，否则是随机名"
+        ],
+        [
+         "nginx:latest",
+         "镜像名:标签，不写标签等价于 latest"
+        ]
+       ]
+      },
+      {
+       "type": "warn",
+       "text": "<b><code>latest</code> 不是「最新」，是「默认标签」。</b>它不会自动更新。生产环境应该用具体版本，比如 <code>nginx:1.27</code>。"
+      }
+     ],
+     "sources": [
+      "runhelp",
+      "pshelp"
+     ]
+    },
+    {
+     "title": "前台、后台、交互",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "三种运行方式，选错了会卡住终端或者容器直接退出。{{1}}"
+      },
+      {
+       "type": "opts",
+       "unit": "选项",
+       "items": [
+        {
+         "title": "后台运行",
+         "pick": true,
+         "desc": "最常用。容器在后台跑，你继续用终端。",
+         "code": "docker run -d nginx"
+        },
+        {
+         "title": "前台 + 交互终端",
+         "desc": "需要进容器里敲命令时用。<code>-it</code> 是 <code>-i</code> + <code>-t</code>，两个都要。",
+         "code": "docker run -it alpine sh"
+        },
+        {
+         "title": "前台但不交互",
+         "desc": "看输出日志用。<code>Ctrl+C</code> 会停掉容器。",
+         "code": "docker run nginx"
+        }
+       ]
+      },
+      {
+       "type": "p",
+       "text": "<code>-i</code> 保持 stdin 打开，<code>-t</code> 分配一个伪终端。只给 <code>-i</code> 会没有提示符，只给 <code>-t</code> 会一输入就退出。"
+      },
+      {
+       "type": "note",
+       "text": "容器里没有 <code>bash</code> 时用 <code>sh</code>。alpine 默认只有 sh。"
+      }
+     ],
+     "sources": [
+      "runhelp"
+     ]
+    },
+    {
+     "title": "容器退出码说明什么",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "容器退出后 <code>docker ps -a</code> 会显示 <code>Exited (N)</code>。这个 N 很重要。{{1}}{{2}}{{3}}"
+      },
+      {
+       "type": "table",
+       "head": [
+        "退出码",
+        "含义",
+        "常见原因"
+       ],
+       "rows": [
+        [
+         "0",
+         "正常结束",
+         "命令跑完了"
+        ],
+        [
+         "1",
+         "应用内部报错",
+         "程序自己的错误"
+        ],
+        [
+         "125",
+         "docker 自身出错",
+         "参数写错、镜像名不存在"
+        ],
+        [
+         "126",
+         "命令无法执行",
+         "没有执行权限"
+        ],
+        [
+         "127",
+         "命令不存在",
+         "镜像里没有这个命令"
+        ],
+        [
+         "137",
+         "被 SIGKILL 杀掉",
+         "OOM 或被 docker kill"
+        ],
+        [
+         "143",
+         "被 SIGTERM 杀掉",
+         "docker stop 的超时后强杀"
+        ]
+       ]
+      },
+      {
+       "type": "p",
+       "text": "137 是最常见的「莫名其妙挂掉」——通常是内存不够被内核杀了。"
+      },
+      {
+       "type": "code",
+       "code": "docker inspect web --format '{{.State.ExitCode}} {{.State.OOMKilled}}'",
+       "lang": "bash"
+      },
+      {
+       "type": "warn",
+       "text": "<b>137 且 <code>OOMKilled=true</code></b> 说明容器撞到了内存上限。<code>docker stats</code> 能看到实时用量。"
+      }
+     ],
+     "sources": [
+      "exit0",
+      "exit1",
+      "exit125",
+      "exit127"
+     ]
+    },
+    {
+     "title": "容器留不留，取决于 --rm",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "默认情况下，容器退出后<strong>还留着</strong>，状态是 Exited。加 <code>--rm</code> 才会自动删除。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "# 不加 --rm：退出后还在\ndocker run --name keep alpine true\ndocker ps -a --filter name=keep\n\n# 加 --rm：退出即删\ndocker run --rm --name gone alpine true\ndocker ps -a --filter name=gone",
+       "lang": "bash"
+      },
+      {
+       "type": "p",
+       "text": "实测结果：<code>keep</code> 出现在 <code>ps -a</code> 里，<code>gone</code> 完全没有。"
+      },
+      {
+       "type": "note",
+       "text": "一次性任务（跑测试、执行脚本）都该加 <code>--rm</code>，否则硬盘会被 exited 容器塞满。"
+      }
+     ],
+     "sources": [
+      "rmflag"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "容器的一生",
+   "desc": "create / start / stop / kill 到底差在哪，状态怎么流转。",
+   "steps": [
+    {
+     "title": "create 和 run 是两步",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "<code>docker run</code> 实际上是 <code>create</code> + <code>start</code>。分开做的好处是：可以先创建、检查配置，再决定什么时候启动。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "docker create --name c1 nginx\ndocker ps -a --filter name=c1     # 状态 Created\ndocker start c1\ndocker ps --filter name=c1        # 状态 Up",
+       "lang": "bash"
+      },
+      {
+       "type": "p",
+       "text": "什么时候需要分开：需要先改配置再启动、需要在特定时刻启动、需要批量创建。"
+      },
+      {
+       "type": "note",
+       "text": "CI 里常见用法：先 <code>create</code> 完所有依赖容器，再统一起，省时间。"
+      }
+     ],
+     "sources": [
+      "runhelp",
+      "pshelp"
+     ]
+    },
+    {
+     "title": "三种停止方式",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "停容器有三个命令，行为完全不同。{{1}}"
+      },
+      {
+       "type": "table",
+       "head": [
+        "命令",
+        "做什么",
+        "耗时",
+        "什么时候用"
+       ],
+       "rows": [
+        [
+         "stop",
+         "发 SIGTERM，等 10 秒，再 SIGKILL",
+         "最多 10 秒",
+         "默认用它，让应用优雅退出"
+        ],
+        [
+         "kill",
+         "直接发 SIGKILL",
+         "立即",
+         "卡死了，等不了"
+        ],
+        [
+         "restart",
+         "stop 再 start",
+         "同 stop",
+         "改完配置重启"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "# 改超时时间\ndocker stop -t 30 web",
+       "lang": "bash"
+      },
+      {
+       "type": "warn",
+       "text": "<b>SIGTERM 不是每个程序都处理。</b>很多镜像的 PID 1 是 shell，shell 不会转发信号给子进程，结果 10 秒后还是被 SIGKILL。这就是退出码 143 和 137 的区别。"
+      }
+     ],
+     "sources": [
+      "runhelp",
+      "docs"
+     ]
+    },
+    {
+     "title": "exec 和 attach 的区别",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "两个都能进容器，但机制不同。{{1}}"
+      },
+      {
+       "type": "kv",
+       "items": [
+        [
+         "exec",
+         "在容器里开一个<strong>新进程</strong>。容器的主进程不受影响。最常用。"
+        ],
+        [
+         "attach",
+         "接到容器的<strong>主进程</strong>标准输入输出上。按 Ctrl+C 会杀掉容器。"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "# 正确用法：exec\ndocker exec -it web sh\n\n# 危险：attach 后按 Ctrl+C 会停掉容器\ndocker attach web",
+       "lang": "bash"
+      },
+      {
+       "type": "note",
+       "text": "进容器的标准姿势是 <code>docker exec -it &lt;name&gt; sh</code>。忘了 <code>-it</code> 会卡住。"
+      }
+     ],
+     "sources": [
+      "runhelp",
+      "docs"
+     ]
+    },
+    {
+     "title": "日志的两种模式",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "<code>docker logs</code> 默认输出历史日志然后退出。加 <code>-f</code> 会持续跟随。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "docker logs web              # 全部历史\ndocker logs --tail 100 web   # 最后 100 行\ndocker logs -f web           # 持续跟随（类似 tail -f）\ndocker logs -t web           # 带时间戳",
+       "lang": "bash"
+      },
+      {
+       "type": "p",
+       "text": "日志存在哪里：由 daemon 的 <code>log-driver</code> 决定，默认是 <code>json-file</code>，文件在 <code>/var/lib/docker/containers/&lt;id&gt;/&lt;id&gt;-json.log</code>。"
+      },
+      {
+       "type": "warn",
+       "text": "<b>默认不轮转。</b>日志能涨到把磁盘撑满。生产环境必须配 <code>max-size</code> / <code>max-file</code>（在 daemon.json 里，本页没展开）。"
+      }
+     ],
+     "sources": [
+      "docs",
+      "help"
+     ]
+    },
+    {
+     "title": "状态机速查",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "容器的完整状态流转，以及每个状态该用什么命令推进。{{1}}"
+      },
+      {
+       "type": "table",
+       "head": [
+        "当前状态",
+        "怎么进入的",
+        "下一步能做什么",
+        "命令"
+       ],
+       "rows": [
+        [
+         "created",
+         "docker create",
+         "启动",
+         "docker start"
+        ],
+        [
+         "running",
+         "start / run",
+         "暂停、停止、杀",
+         "pause / stop / kill"
+        ],
+        [
+         "paused",
+         "docker pause",
+         "恢复",
+         "unpause"
+        ],
+        [
+         "exited",
+         "进程结束 / stop / kill",
+         "重启、删除、看日志",
+         "start / rm / logs"
+        ],
+        [
+         "dead",
+         "删除失败",
+         "只能强制删",
+         "rm -f"
+        ],
+        [
+         "restarting",
+         "restart 策略触发",
+         "等它自己好",
+         "—"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "docker ps                    # 只有 running\ndocker ps -a                 # 全部（含 exited、created）\ndocker ps -a --filter status=exited",
+       "lang": "bash"
+      },
+      {
+       "type": "note",
+       "text": "看到容器「不见了」，先跑 <code>ps -a</code>。默认 <code>ps</code> 只列 running 的。"
+      }
+     ],
+     "sources": [
+      "pshelp",
+      "psdef"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "镜像",
+   "desc": "拉取、查看、打标签、导出导入。以及 digest 为什么比 tag 可靠。",
+   "steps": [
+    {
+     "title": "tag 会变，digest 不会",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "<code>nginx:latest</code> 指向的不是一个固定镜像，是一个名字。这个名字背后的实际镜像可以变。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "# 看到 digest\ndocker images --digests nginx\n\n# 用 digest 拉，拿到的是确定的那个\ndocker pull nginx@sha256:abc123...",
+       "lang": "bash"
+      },
+      {
+       "type": "table",
+       "head": [
+        "",
+        "tag",
+        "digest"
+       ],
+       "rows": [
+        [
+         "是什么",
+         "人类可读的别名",
+         "内容的 SHA256"
+        ],
+        [
+         "会变吗",
+         "会（push 同名 tag 就覆盖）",
+         "不会"
+        ],
+        [
+         "适合",
+         "日常开发",
+         "生产锁定、审计"
+        ]
+       ],
+       "text": "<code>nginx:1.27</code> 这样的版本标签同样会被覆盖，只是频率比 <code>latest</code> 低。要完全锁定必须用 digest。"
+      },
+      {
+       "type": "note",
+       "text": "生产环境用 digest 锁版本，比用 tag 可靠。<code>nginx:1.27</code> 这样的版本标签同样会被覆盖，只是频率比 <code>latest</code> 低。"
+      }
+     ],
+     "sources": [
+      "docs"
+     ]
+    },
+    {
+     "title": "从哪些角度观察一个镜像",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "拿到一个镜像，四个命令能看清它。{{1}}"
+      },
+      {
+       "type": "kv",
+       "items": [
+        [
+         "docker images",
+         "本地有哪些，多大"
+        ],
+        [
+         "docker inspect",
+         "全部元数据：入口点、环境变量、挂载点、健康检查"
+        ],
+        [
+         "docker history",
+         "分层历史，每层多大——用来找「为什么这镜像 2GB」"
+        ],
+        [
+         "docker image prune",
+         "清理悬空镜像"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "docker inspect nginx --format '{{.Config.Entrypoint}} {{.Config.Cmd}}'\ndocker history nginx | head -20",
+       "lang": "bash"
+      },
+      {
+       "type": "p",
+       "text": "<code>history</code> 显示的层大小加起来小于总大小是正常的——基础层是共享的。"
+      }
+     ],
+     "sources": [
+      "docs",
+      "help"
+     ]
+    },
+    {
+     "title": "tag、push、login",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "把本地镜像推到仓库，三步。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "# 1. 登录\ndocker login\n\n# 2. 打标签（格式：仓库地址/命名空间/名字:标签）\ndocker tag myapp:latest registry.example.com/team/myapp:1.0\n\n# 3. 推\ndocker push registry.example.com/team/myapp:1.0",
+       "lang": "bash"
+      },
+      {
+       "type": "p",
+       "text": "标签名决定了推到哪。不带仓库地址就推 Docker Hub 的 <code>你的用户名/镜像名</code>。"
+      },
+      {
+       "type": "warn",
+       "text": "<b>忘了改标签直接 push</b> 会把镜像推到 Docker Hub 公开仓库。先 <code>docker images</code> 确认名字。"
+      }
+     ],
+     "sources": [
+      "docs"
+     ]
+    },
+    {
+     "title": "save / load / export / import 四者对比",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "四个都能搬运镜像，但对象和用途完全不同。{{1}}"
+      },
+      {
+       "type": "table",
+       "head": [
+        "命令",
+        "对象",
+        "保留什么",
+        "文件大小"
+       ],
+       "rows": [
+        [
+         "save",
+         "镜像",
+         "完整镜像，含所有层和历史",
+         "大"
+        ],
+        [
+         "load",
+         "镜像",
+         "从 save 的文件恢复",
+         "—"
+        ],
+        [
+         "export",
+         "容器",
+         "拍平成一层文件系统，丢历史",
+         "小"
+        ],
+        [
+         "import",
+         "镜像",
+         "从 export 的文件建新镜像",
+         "—"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "# 备份镜像（推荐）\ndocker save -o nginx.tar nginx:latest\ndocker load -i nginx.tar\n\n# 导出容器文件系统（会丢元数据）\ndocker export web > web.tar\ndocker import web.tar myimage:flat",
+       "lang": "bash"
+      },
+      {
+       "type": "warn",
+       "text": "<b><code>export</code> 会丢掉 ENTRYPOINT、CMD、环境变量、卷定义。</b>想搬镜像用 <code>save</code>，别用 <code>export</code>。"
+      }
+     ],
+     "sources": [
+      "docs"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "数据与网络",
+   "desc": "容器里的数据怎么留住，容器之间怎么通。",
+   "steps": [
+    {
+     "title": "三种挂载方式",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "容器删了数据就没了，除非挂载。三种方式用途不同。{{1}}"
+      },
+      {
+       "type": "table",
+       "head": [
+        "类型",
+        "写法",
+        "谁管",
+        "适合"
+       ],
+       "rows": [
+        [
+         "命名卷",
+         "-v myvol:/data",
+         "docker 管",
+         "数据库、需要备份的数据"
+        ],
+        [
+         "绑定挂载",
+         "-v /host/path:/data",
+         "你自己管",
+         "开发时代码热更新、配置文件"
+        ],
+        [
+         "tmpfs",
+         "--tmpfs /data",
+         "内存",
+         "临时文件、敏感数据不落盘"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "# 命名卷\ndocker volume create pgdata\ndocker run -d -v pgdata:/var/lib/postgresql/data postgres\n\n# 绑定挂载\ndocker run -d -v $(pwd)/html:/usr/share/nginx/html nginx\n\n# tmpfs\ndocker run --tmpfs /tmp alpine",
+       "lang": "bash"
+      },
+      {
+       "type": "note",
+       "text": "命名卷在 macOS 上性能比绑定挂载好很多。绑定挂载跨文件系统同步，大项目会明显卡。"
+      }
+     ],
+     "sources": [
+      "vbind",
+      "vname",
+      "docs"
+     ]
+    },
+    {
+     "title": "-v 和 --mount 的差别",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "两种语法都能挂载，但行为不同。{{1}}"
+      },
+      {
+       "type": "kv",
+       "items": [
+        [
+         "-v /a:/b",
+         "宿主路径不存在时<strong>自动创建目录</strong>。写错了不报错。"
+        ],
+        [
+         "--mount type=bind,src=/a,dst=/b",
+         "宿主路径不存在时<strong>直接报错</strong>。"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "# -v：路径写错也「成功」，但挂了个空目录\ndocker run -v /typo/path:/data alpine ls /data\n\n# --mount：找不到就报错\ndocker run --mount type=bind,src=/typo/path,dst=/data alpine ls /data",
+       "lang": "bash"
+      },
+      {
+       "type": "warn",
+       "text": "用 <code>-v</code> 时路径打错不会报错，你会得到一个空目录，然后困惑为什么数据没进去。生产环境用 <code>--mount</code>。"
+      }
+     ],
+     "sources": [
+      "docs"
+     ]
+    },
+    {
+     "title": "网络：默认能通吗",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "默认桥接网络上的容器，<strong>能用 IP 互通，不能用名字</strong>。自定义网络才能用名字。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "# 默认 bridge：只能用 IP\ndocker run -d --name a nginx\ndocker run --rm alpine ping -c1 $(docker inspect -f '{{.NetworkSettings.IPAddress}}' a)\n\n# 自定义网络：可以用名字\ndocker network create mynet\ndocker run -d --name b --network mynet nginx\ndocker run --rm --network mynet alpine ping -c1 b",
+       "lang": "bash"
+      },
+      {
+       "type": "p",
+       "text": "这就是为什么 <code>docker-compose</code> 默认给你建一个自定义网络——服务之间可以直接用服务名互访。"
+      },
+      {
+       "type": "note",
+       "text": "容器 IP 每次重建都会变。永远不要硬编码 IP。"
+      }
+     ],
+     "sources": [
+      "docs"
+     ]
+    },
+    {
+     "title": "端口发布的坑",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "<code>-p 宿主:容器</code>，写反了就连不上。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "docker run -d -p 8080:80 nginx    # 宿主 8080 → 容器 80\ndocker run -d -p 80:8080 nginx    # 反了！nginx 听 80，容器里没人听 8080",
+       "lang": "bash"
+      },
+      {
+       "type": "kv",
+       "items": [
+        [
+         "-p 8080:80",
+         "指定宿主端口"
+        ],
+        [
+         "-p 127.0.0.1:8080:80",
+         "只监听本地回环，外部访问不到"
+        ],
+        [
+         "-p 8080:80/udp",
+         "UDP 要显式写"
+        ],
+        [
+         "-P",
+         "随机分配宿主端口，用 docker port 查"
+        ]
+       ]
+      },
+      {
+       "type": "warn",
+       "text": "<b><code>-p 8080:80</code> 默认监听 <code>0.0.0.0</code></b>，也就是所有网卡。云服务器上这等于把服务暴露到公网。只想本机访问就写 <code>-p 127.0.0.1:8080:80</code>。"
+      },
+      {
+       "type": "table",
+       "head": [
+        "你要的效果",
+        "写法"
+       ],
+       "rows": [
+        [
+         "只有本机能访问",
+         "<code>-p 127.0.0.1:8080:80</code>"
+        ],
+        [
+         "局域网 / 公网能访问",
+         "<code>-p 8080:80</code>（监听 0.0.0.0）"
+        ],
+        [
+         "随机端口",
+         "<code>-P</code>，用 <code>docker port</code> 查"
+        ],
+        [
+         "UDP 服务",
+         "<code>-p 8080:80/udp</code>"
+        ]
+       ]
+      },
+      {
+       "type": "note",
+       "text": "这一章讲了数据的三种挂法、网络能不能互通、端口怎么暴露。数据会丢、端口暴露范围，这两个是最容易出事的地方，其余可以查着用。"
+      }
+     ],
+     "sources": [
+      "runhelp",
+      "docs"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "排障与清理",
+   "desc": "出问题先看什么，以及怎么不把磁盘塞满。",
+   "steps": [
+    {
+     "title": "五个命令回答五个问题",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "排障不用猜，每个命令回答一个具体问题。{{1}}"
+      },
+      {
+       "type": "table",
+       "head": [
+        "命令",
+        "回答什么"
+       ],
+       "rows": [
+        [
+         "docker ps -a",
+         "容器还在吗？什么状态？退出码多少？"
+        ],
+        [
+         "docker logs <c>",
+         "它说了什么？"
+        ],
+        [
+         "docker inspect <c>",
+         "配置对不对？环境变量、挂载、网络、退出原因"
+        ],
+        [
+         "docker stats",
+         "现在占多少 CPU / 内存？"
+        ],
+        [
+         "docker top <c>",
+         "容器里跑着什么进程？"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "# 一条命令看关键状态\ndocker inspect web --format '{{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}}'",
+       "lang": "bash"
+      },
+      {
+       "type": "note",
+       "text": "先 <code>ps -a</code> 看状态，再 <code>logs</code> 看原因，最后 <code>inspect</code> 看配置。这个顺序能解决八成问题。"
+      }
+     ],
+     "sources": [
+      "pshelp",
+      "docs"
+     ]
+    },
+    {
+     "title": "容器里改的东西去哪了",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "容器里 <code>rm</code> 了文件、改了配置，怎么捞出来？两个命令。{{1}}"
+      },
+      {
+       "type": "kv",
+       "items": [
+        [
+         "docker diff <c>",
+         "列出相对镜像改了哪些文件（A 新增 / C 修改 / D 删除）"
+        ],
+        [
+         "docker cp <c>:/path ./local",
+         "把文件拷出来"
+        ]
+       ]
+      },
+      {
+       "type": "code",
+       "code": "docker diff web\ndocker cp web:/etc/nginx/nginx.conf ./nginx.conf.bak",
+       "lang": "bash"
+      },
+      {
+       "type": "note",
+       "text": "<code>diff</code> 只显示路径，不显示内容。要看内容用 <code>cp</code> 拷出来。"
+      }
+     ],
+     "sources": [
+      "docs"
+     ]
+    },
+    {
+     "title": "磁盘满了怎么查",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "Docker 占的空间分四块，要分别清。{{1}}"
+      },
+      {
+       "type": "code",
+       "code": "docker system df           # 总览：镜像/容器/卷/构建缓存各占多少\ndocker system df -v        # 逐项明细",
+       "lang": "bash"
+      },
+      {
+       "type": "table",
+       "head": [
+        "占空间的",
+        "清理命令",
+        "注意"
+       ],
+       "rows": [
+        [
+         "停止的容器",
+         "docker container prune",
+         "会删掉所有 exited 容器"
+        ],
+        [
+         "悬空镜像",
+         "docker image prune",
+         "只删 <none> 标签的"
+        ],
+        [
+         "没用到的镜像",
+         "docker image prune -a",
+         "<b>会删掉所有没容器在用的镜像</b>"
+        ],
+        [
+         "没挂载的卷",
+         "docker volume prune",
+         "<b>数据会丢，先确认</b>"
+        ],
+        [
+         "构建缓存",
+         "docker builder prune",
+         "安全，下次构建会慢一点"
+        ]
+       ]
+      },
+      {
+       "type": "warn",
+       "text": "<code>docker system prune -a --volumes</code> 会删掉一切不在运行的东西，包括你数据库的卷。执行前先跑 <code>docker system df -v</code> 看清楚。"
+      }
+     ],
+     "sources": [
+      "docs",
+      "help"
+     ]
+    },
+    {
+     "title": "五个高频错误",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "按出现频率排序，每条给出「看到什么」和「怎么办」。{{1}}"
+      },
+      {
+       "type": "ol",
+       "items": [
+        "端口已被占用：<code>bind: address already in use</code>。换宿主端口，或 <code>lsof -i :8080</code> 找谁占着。",
+        "容器启动就退出：<code>ps -a</code> 看到 Exited (0)。主进程跑完就退，容器没东西可做。用 <code>-it</code> 或换一个前台命令。",
+        "137 退出：内存不够被 OOM 杀。看 <code>docker stats</code>，加 <code>-m</code> 限制或给更多内存。",
+        "连不上容器里的服务：服务监听 <code>127.0.0.1</code> 而不是 <code>0.0.0.0</code>。容器内的 127.0.0.1 是容器自己，宿主映射不进去。",
+        "改了代码没生效：镜像里的代码是构建时拷进去的。开发时用绑定挂载，或重新 <code>build</code>。"
+       ]
+      }
+     ],
+     "sources": [
+      "exit125",
+      "exit127",
+      "docs"
+     ]
+    },
+    {
+     "title": "内容覆盖对照",
+     "blocks": [
+      {
+       "type": "p",
+       "text": "这份文档覆盖「单机容器」这一层。下面是覆盖了哪些命令，以及哪些还没写。{{1}}"
+      },
+      {
+       "type": "table",
+       "head": [
+        "命令",
+        "状态",
+        "备注"
+       ],
+       "rows": [
+        [
+         "run / create / start / stop / kill / rm",
+         "✅ 讲透",
+         "—"
+        ],
+        [
+         "ps / logs / inspect / exec / stats / top / diff / cp",
+         "✅ 讲透",
+         "—"
+        ],
+        [
+         "pull / push / tag / images / history / save / load",
+         "✅ 讲透",
+         "—"
+        ],
+        [
+         "export / import / search / login / logout / version / info",
+         "📝 参考栏",
+         "—"
+        ],
+        [
+         "build / builder / buildx",
+         "❌ 未写",
+         "镜像构建，待补"
+        ],
+        [
+         "compose",
+         "❌ 未写",
+         "多容器编排，待补"
+        ],
+        [
+         "volume / network 的子命令",
+         "部分",
+         "只讲了常用的"
+        ],
+        [
+         "system / prune 系列",
+         "部分",
+         "只讲了清理"
+        ],
+        [
+         "daemon.json / 日志驱动 / 存储驱动",
+         "❌ 未写",
+         "daemon 配置，待补"
+        ]
+       ]
+      },
+      {
+       "type": "note",
+       "text": "按自足标准，这份文档还有缺口：构建、Compose、daemon 配置三块没有覆盖。如果要补齐，说一声。"
+      }
+     ],
+     "sources": [
+      "help"
+     ]
+    }
+   ]
+  }
+ ],
+ "reference": [
+  {
+   "cat": "命令",
+   "key": "docker run",
+   "short": "创建并启动一个容器",
+   "doc": "<p>等价于 <code>create</code> + <code>start</code>。100 个 flag，这里讲了最常用的 15 个。</p><div class=\"rkey\"><span class=\"kn\">-d</span><span class=\"kv2\">后台运行</span></div><div class=\"rkey\"><span class=\"kn\">-it</span><span class=\"kv2\">交互终端，两个都要</span></div><div class=\"rkey\"><span class=\"kn\">--rm</span><span class=\"kv2\">退出后自动删除容器</span></div><div class=\"rkey\"><span class=\"kn\">--name</span><span class=\"kv2\">容器名，不写则随机</span></div><div class=\"rkey\"><span class=\"kn\">-p 宿主:容器</span><span class=\"kv2\">端口映射，默认监听 0.0.0.0</span></div><div class=\"rkey\"><span class=\"kn\">-v 源:目标</span><span class=\"kv2\">挂载，路径不存在会自动建</span></div><div class=\"rkey\"><span class=\"kn\">-e KEY=VAL</span><span class=\"kv2\">环境变量</span></div><div class=\"rkey\"><span class=\"kn\">-m 512m</span><span class=\"kv2\">内存上限</span></div><div class=\"rkey\"><span class=\"kn\">--network</span><span class=\"kv2\">加入指定网络</span></div>"
+  },
+  {
+   "cat": "命令",
+   "key": "docker ps",
+   "short": "列出容器",
+   "doc": "<p>默认只列 running。<code>-a</code> 才含 exited / created。</p><div class=\"rkey\"><span class=\"kn\">-a</span><span class=\"kv2\">全部容器</span></div><div class=\"rkey\"><span class=\"kn\">-q</span><span class=\"kv2\">只输出 ID，适合管道</span></div><div class=\"rkey\"><span class=\"kn\">-s</span><span class=\"kv2\">显示占用空间</span></div><div class=\"rkey\"><span class=\"kn\">--filter</span><span class=\"kv2\">status= / name= / ancestor=</span></div><div class=\"rkey\"><span class=\"kn\">--format</span><span class=\"kv2\">Go 模板，如 <code>{{.Names}}</code></span></div>"
+  },
+  {
+   "cat": "命令",
+   "key": "docker exec",
+   "short": "在运行中的容器里执行命令",
+   "doc": "<p>开一个新进程，不影响主进程。</p><div class=\"rkey\"><span class=\"kn\">-it</span><span class=\"kv2\">交互进入，最常用</span></div><div class=\"rkey\"><span class=\"kn\">-u</span><span class=\"kv2\">指定用户，如 <code>-u root</code></span></div><div class=\"rkey\"><span class=\"kn\">-w</span><span class=\"kv2\">工作目录</span></div>"
+  },
+  {
+   "cat": "命令",
+   "key": "docker logs",
+   "short": "查看容器输出",
+   "doc": "<div class=\"rkey\"><span class=\"kn\">-f</span><span class=\"kv2\">持续跟随</span></div><div class=\"rkey\"><span class=\"kn\">--tail N</span><span class=\"kv2\">最后 N 行</span></div><div class=\"rkey\"><span class=\"kn\">-t</span><span class=\"kv2\">带时间戳</span></div><div class=\"rkey\"><span class=\"kn\">--since</span><span class=\"kv2\">如 <code>10m</code>，最近 10 分钟</span></div>"
+  },
+  {
+   "cat": "命令",
+   "key": "docker stop",
+   "short": "优雅停止容器",
+   "doc": "<p>发 SIGTERM，等 <code>-t</code> 秒（默认 10），再 SIGKILL。<b>PID 1 是 shell 的镜像不会转发信号</b>，所以会被强杀。</p>"
+  },
+  {
+   "cat": "命令",
+   "key": "docker kill",
+   "short": "立即杀掉容器",
+   "doc": "<p>直接 SIGKILL，不给清理机会。只有卡死时才用。</p>"
+  },
+  {
+   "cat": "命令",
+   "key": "docker inspect",
+   "short": "查看容器/镜像的全部元数据",
+   "doc": "<p>最有用的是用 <code>--format</code> 取单项：</p><div class=\"rkey\"><span class=\"kn\">{{.State.Status}}</span><span class=\"kv2\">状态</span></div><div class=\"rkey\"><span class=\"kn\">{{.State.ExitCode}}</span><span class=\"kv2\">退出码</span></div><div class=\"rkey\"><span class=\"kn\">{{.State.OOMKilled}}</span><span class=\"kv2\">是否被 OOM 杀</span></div><div class=\"rkey\"><span class=\"kn\">{{.Config.Env}}</span><span class=\"kv2\">环境变量</span></div><div class=\"rkey\"><span class=\"kn\">{{.NetworkSettings.IPAddress}}</span><span class=\"kv2\">IP</span></div>"
+  },
+  {
+   "cat": "命令",
+   "key": "docker stats",
+   "short": "实时资源占用",
+   "doc": "<p>CPU / 内存 / 网络 / 磁盘 IO。默认持续刷新，<code>--no-stream</code> 只取一次。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "退出码 0",
+   "short": "正常结束",
+   "doc": "<p>容器主进程返回 0。对一次性任务来说是成功。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "退出码 1",
+   "short": "应用内部报错",
+   "doc": "<p>程序自己返回的错误。看 <code>docker logs</code> 找原因。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "退出码 125",
+   "short": "docker 自身出错",
+   "doc": "<p>参数写错、镜像不存在之类。不是应用的问题。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "退出码 127",
+   "short": "命令不存在",
+   "doc": "<p>镜像里没有你指定的命令。常见于把 <code>bash</code> 用在只有 <code>sh</code> 的 alpine 上。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "退出码 137",
+   "short": "被 SIGKILL 杀掉",
+   "doc": "<p>最常见原因是内存超限被内核杀。<code>docker inspect</code> 看 <code>OOMKilled</code> 确认。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "退出码 143",
+   "short": "被 SIGTERM 杀掉",
+   "doc": "<p><code>docker stop</code> 超时后强杀的痕迹。说明应用没在 10 秒内优雅退出。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "latest 标签",
+   "short": "默认标签，不是最新版",
+   "doc": "<p>不写标签等价于 <code>:latest</code>。它不会自动更新，也不代表最新版本。生产用具体版本号或 digest。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "digest",
+   "short": "镜像内容的 SHA256",
+   "doc": "<p>不会变。格式 <code>nginx@sha256:abc...</code>。生产环境用它锁版本。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "绑定挂载",
+   "short": "把宿主目录挂进容器",
+   "doc": "<p><code>-v /host:/container</code>。宿主路径不存在会自动创建目录（<code>--mount</code> 则会报错）。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "命名卷",
+   "short": "docker 管理的持久化存储",
+   "doc": "<p><code>-v myvol:/data</code>。位置在 <code>/var/lib/docker/volumes/</code>。比绑定挂载快，跨容器共享。</p>"
+  },
+  {
+   "cat": "概念",
+   "key": "自定义网络",
+   "short": "容器之间可以用名字互访",
+   "doc": "<p>默认 bridge 只能用 IP。建自定义网络后可以用容器名做主机名。</p>"
+  },
+  {
+   "cat": "文件与路径",
+   "key": "/var/lib/docker",
+   "short": "daemon 的数据根目录",
+   "doc": "<p>镜像、容器可写层、卷都在这里。Linux 上是这个路径；macOS 在虚拟机里。</p>"
+  },
+  {
+   "cat": "文件与路径",
+   "key": "/var/lib/docker/volumes",
+   "short": "命名卷的实际位置",
+   "doc": "<p>每个卷一个子目录。不要直接改里面的文件，用容器访问。</p>"
+  }
+ ]
+}

@@ -1,0 +1,302 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Learning Engine Book Data",
+  "description": "学习读本的数据结构。模板只认这个格式，不合规直接拒绝渲染。",
+  "type": "object",
+  "required": ["slug", "project", "version", "subtitle", "intro", "sources", "stages"],
+  "additionalProperties": false,
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "localStorage 隔离用。必填，全局唯一，小写字母数字连字符"
+    },
+    "project": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "如 'Docker 29.8.2'。必填，会显示在目录顶部和封面"
+    },
+    "subtitle": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 60
+    },
+    "intro": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 400,
+      "description": "必须写明：基于哪个版本、覆盖什么范围、不覆盖什么"
+    },
+    "sources": {
+      "type": "object",
+      "description": "全局来源表。每页通过 key 引用",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["kind", "path", "why"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": ["run", "code", "doc"],
+            "description": "run=实测输出，code=源码，doc=官方文档"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "文件路径 / 命令 / URL"
+          },
+          "line": {
+            "type": ["integer", "null"],
+            "minimum": 1
+          },
+          "href": {
+            "type": "string",
+            "description": "可点击链接。code 类型通常是仓库文件地址"
+          },
+          "why": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 80,
+            "description": "这条来源支持了正文的哪个说法"
+          }
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["name", "desc", "steps"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 20
+          },
+          "desc": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 150,
+            "description": "一句话说明这章解决什么问题"
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 25,
+            "items": {
+              "type": "object",
+              "required": ["title", "blocks", "sources"],
+              "additionalProperties": false,
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 40
+                },
+                "sources": {
+                  "type": "array",
+                  "minItems": 1,
+                  "description": "每页至少一条来源。正文 {{n}} 的 n 不能超过这个长度",
+                  "items": { "type": "string" }
+                },
+                "blocks": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 12,
+                  "description": "一页最多 12 个块。超过说明该拆页",
+                  "items": { "$ref": "#/definitions/block" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "reference": {
+      "type": "array",
+      "description": "参数速查。没有就省略",
+      "items": {
+        "type": "object",
+        "required": ["cat", "key", "short"],
+        "additionalProperties": false,
+        "properties": {
+          "cat": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 12,
+            "description": "分类。从数据去重生成，不要预设"
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "short": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 60,
+            "description": "一句话，不要句号结尾"
+          },
+          "doc": {
+            "type": "string",
+            "description": "详情 HTML。允许 p / code / b / .rkey / .dt 结构"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "block": {
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        {
+          "properties": {
+            "type": { "const": "p" },
+            "text": { "type": "string", "minLength": 4 }
+          },
+          "required": ["type", "text"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "h3" },
+            "text": { "type": "string", "minLength": 2, "maxLength": 30 }
+          },
+          "required": ["type", "text"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "enum": ["ul", "ol"] },
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 12,
+              "items": { "type": "string", "minLength": 2 }
+            }
+          },
+          "required": ["type", "items"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "enum": ["note", "warn"] },
+            "text": { "type": "string", "minLength": 6 },
+            "label": { "type": "string", "maxLength": 6 }
+          },
+          "required": ["type", "text"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "code" },
+            "code": { "type": "string", "minLength": 1 },
+            "lang": {
+              "enum": ["bash", "shell", "yaml", "json", "python", "go", "js", "ts", "dockerfile", "text", ""]
+            }
+          },
+          "required": ["type", "code"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "table" },
+            "head": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 5,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "rows": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 20,
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 5,
+                "items": { "type": "string" }
+              }
+            }
+          },
+          "required": ["type", "head", "rows"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "kv" },
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 10,
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": { "type": "string" }
+              }
+            }
+          },
+          "required": ["type", "items"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "split" },
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "required": ["h", "p"],
+                "additionalProperties": false,
+                "properties": {
+                  "h": { "type": "string", "maxLength": 20 },
+                  "p": { "type": "string", "minLength": 6 }
+                }
+              }
+            }
+          },
+          "required": ["type", "items"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "opts" },
+            "unit": { "type": "string", "maxLength": 8 },
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 6,
+              "items": {
+                "type": "object",
+                "required": ["title"],
+                "additionalProperties": false,
+                "properties": {
+                  "title": { "type": "string", "minLength": 2, "maxLength": 30 },
+                  "desc": { "type": "string", "minLength": 6 },
+                  "code": { "type": "string" },
+                  "lang": { "type": "string" },
+                  "note": { "type": "string" },
+                  "pick": { "type": "boolean" },
+                  "tag": { "type": "string", "maxLength": 6 }
+                }
+              }
+            }
+          },
+          "required": ["type", "items"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
