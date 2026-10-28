@@ -20,13 +20,22 @@ import os
 
 
 def load_data(html):
-    m = re.search(r'const DATA = (\{.*?\n\});', html, re.S)
+    """从 HTML 里抠出 DATA。支持任意缩进（json.dumps 有无 indent 都行）。"""
+    m = re.search(r'const DATA = (\{.*?\});\s*\n', html, re.S)
     if not m:
-        return None
+        # 兜底：从 const DATA = 到 const SRC 之间
+        m2 = re.search(r'const DATA = (\{.*?\})\s*;', html, re.S)
+        if not m2:
+            return None
+        m = m2
     try:
         return json.loads(m.group(1))
     except json.JSONDecodeError as e:
         print(f"FAIL: DATA 不是合法 JSON: {e}")
+        # 打印出错位置附近内容，方便定位
+        raw = m.group(1)
+        pos = getattr(e, "pos", 0)
+        print(f"  位置 {pos} 附近: ...{raw[max(0,pos-60):pos+60]}...")
         return None
 
 
