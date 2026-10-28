@@ -7,7 +7,7 @@
 ## 一、结构与覆盖度校验
 
 ```bash
-python3 references/verify.py output.html --coverage coverage.json
+python3 scripts/verify.py output.html --coverage coverage.json
 ```
 
 `coverage.json` 是清点结果：

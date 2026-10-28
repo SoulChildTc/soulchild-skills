@@ -130,7 +130,7 @@ wc -l /tmp/envars.txt
 跑校验：
 
 ```bash
-python3 references/verify.py output.html --coverage coverage.json
+python3 scripts/verify.py output.html --coverage coverage.json
 ```
 
 ---

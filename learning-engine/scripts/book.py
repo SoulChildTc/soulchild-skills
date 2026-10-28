@@ -84,7 +84,7 @@ def cmd_verify(html, expect=None):
     args = [html]
     if expect:
         args += ["--expect", expect]
-    return run("references/verify.py", args, "verify.py")
+    return run("verify.py", args, "verify.py")
 
 
 def cmd_all(path):

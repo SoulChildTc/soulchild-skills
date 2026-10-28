@@ -331,7 +331,7 @@ grep -m1 '^version' Cargo.toml      # Rust
 ✓ 2-5 讲 --rm，之后的页面才用它
 ```
 
-`order.py` 会检查这一条。但**不要靠它**——它只能抓「标题里出现过」的术语，
+`scripts/order.py` 会检查这一条。但**不要靠它**——它只能抓「标题里出现过」的术语，
 抓不到纯叙述里的概念。写的时候就要守住。
 
 **规则 2：一个概念只引入一次。**
@@ -431,12 +431,12 @@ grep -m1 '^version' Cargo.toml      # Rust
 
 ## 第六步：渲染
 
-**你只写 `content.json`，渲染交给 `build.py`。不要手写 HTML，不要改样式。**
+**你只写 `content.json`，渲染交给 `scripts/build.py`。不要手写 HTML，不要改样式。**
 
 ```bash
-python3 book.py check content.json    # 结构 + 文风 + 顺序，一次跑完
-python3 book.py build content.json    # 校验通过才生成 index.html
-python3 book.py all content.json      # 三步全跑
+python3 scripts/book.py check content.json    # 结构 + 文风 + 顺序
+python3 scripts/book.py build content.json    # 校验通过才生成 index.html
+python3 scripts/book.py all content.json      # 三步全跑
 ```
 
 只有一个入口。`check` 失败即停，不用自己判断先修哪个。
@@ -449,15 +449,15 @@ python3 book.py all content.json      # 三步全跑
 | `assets/template.html` | 布局、样式、交互 | 不改 |
 | `assets/schema.json` | 数据结构约束 | 不改 |
 | `assets/lint-rules.json` | 文风规则（词表、阈值） | **可改**，见下 |
-| `book.py` | 统一入口 | 不改 |
-| `build.py` `lint.py` `order.py` | 单项检查 | 不改 |
-| `references/verify.py` | 产物校验 | 不改 |
+| `scripts/book.py` | 统一入口 | 不改 |
+| `scripts/build.py` `lint.py` `order.py` | 单项检查 | 不改 |
+| `scripts/verify.py` | 产物校验 | 不改 |
 
 **样式一致性靠这个流程保证，不靠 AI 记忆。** 你只产出 JSON，
 碰不到 HTML 和 CSS，所以每次长得一样。
 
 **文风规则是数据，不是代码。** 觉得某个词该禁、某类加粗该少，
-改 `assets/lint-rules.json` 就行，`lint.py` 不用动：
+改 `assets/lint-rules.json` 就行，`scripts/lint.py` 不用动：
 
 ```json
 {
@@ -559,8 +559,8 @@ python3 book.py all content.json      # 三步全跑
 - 没有无来源的事实陈述
 
 ```bash
-python3 book.py check content.json        # 结构 + 文风 + 顺序
-python3 references/verify.py index.html --expect content.json   # 产物无损
+python3 scripts/book.py check content.json                     # 结构 + 文风 + 顺序
+python3 scripts/verify.py index.html --expect content.json      # 产物无损
 ```
 
 两个都过，才算可以交付。
@@ -574,7 +574,7 @@ python3 references/verify.py index.html --expect content.json   # 产物无损
 
 `--expect content.json` 做往返比对，是唯一能发现「生成时数据被改坏」的检查。
 
-`order.py` 检查的是**概念依赖**：
+`scripts/order.py` 检查的是**概念依赖**：
 
 - 前向引用（某页用了后面才讲的术语）
 - 单页引入新概念超过 6 个
@@ -621,7 +621,7 @@ python3 references/verify.py index.html --expect content.json   # 产物无损
 | 5 | **行内 code 样式不限定作用域** | `.opt code{...}` 会污染 `pre code`，代码块换行全丢，三行命令挤成一行 | 选择器精确到 `.opt .od code` 这种层级 |
 | 6 | **参数表凭记忆手写** | 写出过官方文档里没有的选项（`--documents` 只在一条命令上有） | 只从签名生成，逐条回查 |
 | 7 | **说「可以用 X 改」不说 X 是什么** | 新手分不清环境变量/CLI 参数/配置字段，改完没效果 | 首次出现点名：环境变量 / 命令行参数 / 配置文件字段 |
-| 8 | **标题写数量不核对** | 写「三种东西」正文四条 | 落盘前数一遍，`verify.py` 会抓 |
+| 8 | **标题写数量不核对** | 写「三种东西」正文四条 | 落盘前数一遍，`scripts/verify.py` 会抓 |
 | 9 | **为了凑形态造数据** | 空分类、无对位条目会让整页显假 | 抽到什么写什么，没有就留白并说明 |
 | 10 | **不确定就写「大约」「通常」** | 无依据的量化比不写更糟 | 要么有实测，要么删掉 |
 | 11 | **只抽「常用」的，说「其余看文档」** | 违背自足。用户来这里就是要全的 | 抽全，按用途分组；不确定总数先回去清点 |
@@ -650,8 +650,8 @@ python3 references/verify.py index.html --expect content.json   # 产物无损
 | 文件 | 每册一个 `index.html`（或 `part1.html`、`part2.html`），双击能开，无网络依赖 |
 | 大小 | 单册 100–400 KB（40 页 / 300 条参考约 200 KB）。超过 500 KB 该拆册 |
 | 内容 | `DATA` 填满：`slug`、`project`、`stages`、`reference`；分册时加 `series` |
-| 覆盖度 | `coverage.md` 里没有「既没写也没写原因」的项；跑 `verify.py --coverage` |
-| 校验 | `verify.py` 输出 `OK`，覆盖度 ≥ 95%（或 80–95% 且在 intro 说明） |
+| 覆盖度 | `coverage.md` 里没有「既没写也没写原因」的项；跑 `scripts/verify.py --coverage` |
+| 校验 | `scripts/verify.py` 输出 `OK`，覆盖度 ≥ 95%（或 80–95% 且在 intro 说明） |
 | 自检 | 三处硬编码（`<title>`、顶栏品牌、抽屉标题）已改成项目名 |
 
 **页面必须具备的交互**（模板自带，不要删）：
@@ -685,12 +685,28 @@ python3 references/verify.py index.html --expect content.json   # 产物无损
 - **非 Python 项目没有现成抽取配方**。Go、Rust、TS 见 `references/extraction.md`，
   没有的话自己 grep，别猜。
 
+## 脚本清单
+
+全部在 `scripts/`，都是零依赖的标准库脚本。
+
+| 脚本 | 行数 | 作用 | 什么时候单独跑 |
+|---|---|---|---|
+| `book.py` | 151 | **统一入口** | 总是用它 |
+| `build.py` | 254 | 结构校验 + 注入模板 | 想只看结构错误 |
+| `lint.py` | 203 | 文风检查（读 `assets/lint-rules.json`） | 改了词表后验证 |
+| `order.py` | 237 | 阅读顺序（前向引用） | 大改章节顺序后 |
+| `verify.py` | 244 | 产物校验 + 数据往返比对 | 怀疑生成过程中数据损坏 |
+| `_common.py` | 103 | 共用函数（`plain` / `load` / `Result`） | 不单独运行 |
+
+`book.py` 会按顺序调其余四个，任一失败即停。
+
 ## 参考文件
 
 - `references/coverage.md` — 穷尽清点、覆盖度算法、分册统计、多轮交付节奏
 - `references/extraction.md` — 各语言抽取命令、版本查询、层次与顺序
 - `references/writing.md` — 正文写法、来源标注、反例
-- `references/checks.md` — 校验流程和 `verify.py`
+- `references/checks.md` — 校验流程
+- `scripts/` — 全部可执行脚本，见下面的「脚本清单」
 - `assets/template.html` — 页面模板（渲染引擎 + 样式，不含内容）
 
 ## 模板不写死的东西

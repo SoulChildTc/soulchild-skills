@@ -14,14 +14,16 @@
     length       文本长度超限
 """
 import json
+import os
 import re
 import sys
 
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from _common import plain, load, claimed_count
 
-HERE = __file__.rsplit("/", 1)[0]
-RULES = HERE + "/assets/lint-rules.json"
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+RULES = os.path.join(ROOT, "assets", "lint-rules.json")
 
 
 def load_rules():

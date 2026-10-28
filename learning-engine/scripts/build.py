@@ -20,8 +20,9 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE = os.path.join(HERE, "assets", "template.html")
-SCHEMA = os.path.join(HERE, "assets", "schema.json")
+ROOT = os.path.dirname(HERE)
+TEMPLATE = os.path.join(ROOT, "assets", "template.html")
+SCHEMA = os.path.join(ROOT, "assets", "schema.json")
 
 
 # ══════════════════════════════════════════════════════════════

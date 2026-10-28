@@ -27,10 +27,11 @@
     其他页首次出现 → 视为「使用」T
 """
 import json
+import os
 import re
 import sys
 
-sys.path.insert(0, __file__.rsplit("/", 1)[0])
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import plain, load
 
 # ── 这些不算术语：命令本身、通用词、单位 ──

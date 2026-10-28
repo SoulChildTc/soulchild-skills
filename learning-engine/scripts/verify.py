@@ -19,10 +19,11 @@
     python3 verify.py index.html --expect content.json    # 往返比对
 """
 import json
+import os
 import re
 import sys
 
-sys.path.insert(0, __file__.rsplit("/", 1)[0].rsplit("/", 1)[0])
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load
 
 

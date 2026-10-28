@@ -304,7 +304,7 @@ grep -rhoE "environ\.get\(['\"][A-Z_]+|getenv\(['\"][A-Z_]+" --include="*.py" | 
 
 1. 存成 `coverage.md`，每项一行，标 ✅ / 📝 / ❌
 2. 数出 `total` 和 `written`，写进 `coverage.json`
-3. 跑 `verify.py --coverage coverage.json`
+3. 跑 `scripts/verify.py --coverage coverage.json`
 4. 覆盖度 < 95% 就继续写，不要交付
 
 **注意**：`total` 要算「能力项」，不是「帮助文本行数」。
