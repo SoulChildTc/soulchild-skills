@@ -4,24 +4,50 @@
 
 ---
 
-## 一、结构校验
-
-把 HTML 里的 `DATA` 对象抠出来单独检查：
+## 一、结构与覆盖度校验
 
 ```bash
-python3 references/verify.py output.html
+python3 references/verify.py output.html --coverage coverage.json
 ```
 
-它会检查：slug 是否唯一、角标是否越界、每页是否有来源、来源 key 是否存在、
-标题里的数字和实际条目数是否一致。
+`coverage.json` 是清点结果：
+
+```json
+{
+  "total": 104,
+  "written": 101,
+  "skipped": [
+    {"item": "--engine", "reason": "需要特定硬件"},
+    {"item": "--legacy-env", "reason": "已废弃"}
+  ]
+}
+```
+
+`total` 是清点出的全部公开能力条目数，`written` 是已经写进页面的数量，
+`skipped` 每条都必须有 `reason`。
+
+判定：
+
+| 覆盖度 | 结果 |
+|---|---|
+| ≥ 95% | 通过 |
+| 80–95% | 通过但提醒，需在 intro 说明没覆盖什么 |
+| < 80% | 不合格，退出码 1 |
+
+检查项：
+
+- `slug` 存在（进度隔离）
+- 每页角标 `{{n}}` 不越界
+- 每页有来源、来源 key 存在
+- 标题里的数字与实际条目数一致
+- 参考条目字段完整
+- 覆盖度达标
 
 通过输出：
 
 ```
-OK  4 关  36 页  82 条参考  7 个分类
+OK  4 关  36 页  82 条参考  7 个分类  覆盖 101/104 = 97.1%
 ```
-
-失败会逐条列出问题并以非零码退出。
 
 ## 二、来源校验
 

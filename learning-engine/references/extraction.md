@@ -229,18 +229,83 @@ FastAPI 就是例子：主体是库，但 `fastapi/cli.py` 转发 `fastapi-cli`�
 
 ---
 
-## 按目的决定读多深
+## 层次决定顺序，不决定写不写
 
-读源码不等于学得更好。做错这一步，输出会从「能用的学习页」变成「源码考古报告」。
+自足要求所有层次都写。层次只影响**排在哪、写多细**。
 
-| 目的 | 读 | 不读 |
+| 层 | 写多细 | 位置 |
 |---|---|---|
-| 上手用 | CLI/API 定义、`--help`、快速开始、常见坑 | 内部实现、设计模式、性能路径 |
-| 二次开发 | 架构分层、扩展点、公开 API 面、模块边界 | 逐行实现、历史提交 |
-| 选型 | 能力边界、天花板、对比项 | 安装步骤、命令全集 |
-| 讲清楚 | 核心概念、设计取舍、演进原因 | 参数清单 |
+| L1 用 | 每步都能照做，有可跑例子 | 前面 |
+| L2 懂 | 讲清机制和取舍，不逐行 | 中间 |
+| L3 改 | 扩展点 + 源码地图 + 改动示例 | 后面 |
+| L4 选 | 边界、对比、天花板 | 最后 |
 
-判断标准：**这条事实能不能改变用户的操作方式**。不能，就不属于上手内容。
+**不存在「上手场景不读原理」这种豁免。** 原理只是往后放。
+唯一可以不写的是「需要特定硬件才能验证」和「已废弃」这两类，且必须写进 `coverage.skipped`。
 
-反例：为了讲清 ripgrep 的参数去读 `Flag` trait 实现，得出「104 个 `impl Flag for`、
-7 个 Category」——对二次开发有用，对一周上手是噪音。
+反例（真实踩过）：为了讲清 ripgrep 参数，agent 主动决定「104 个旗标只取 30 个」。
+按自足标准这是缺陷——104 个都该进参考栏，只是分组呈现、正文只展开高频的。
+
+## 穷尽清点：先列全，再挑
+
+自足的前提是**知道总共有多少**。清点这一步不能省。
+
+### CLI
+
+```bash
+TOOL=your-tool
+
+# 1. 所有子命令
+$TOOL --help | grep -E "^\s+[a-z][a-z-]+" | awk '{print $1}'
+
+# 2. 每个命令的参数（逐个跑，全部保存）
+$TOOL --help > /tmp/help-root.txt
+for c in $($TOOL --help | grep -E "^\s+[a-z][a-z-]+" | awk '{print $1}'); do
+  $TOOL "$c" --help > "/tmp/help-$c.txt" 2>/dev/null
+done
+
+# 3. 数总数
+cat /tmp/help-*.txt | grep -cE "^\s+(-|--)"
+```
+
+把这些数字记进 `coverage.json` 的 `total`。
+
+### 库 / SDK
+
+```bash
+# Python：导出面
+python3 -c "import pkg; print(len(dir(pkg)))"
+grep -c "def " pkg/__init__.py
+
+# TypeScript
+grep -c "^export " index.d.ts
+
+# Go
+grep -c "^func " *.go
+```
+
+### 配置项
+
+```bash
+# pydantic settings
+grep -E "^\s+[a-z_]+:" config.py | wc -l
+# JSON schema
+python3 -c "import json;print(len(json.load(open('schema.json'))['properties']))"
+```
+
+### 环境变量
+
+```bash
+grep -rhoE "environ\.get\(['\"][A-Z_]+|getenv\(['\"][A-Z_]+" --include="*.py" | \
+  grep -oE "[A-Z_]{3,}" | sort -u | wc -l
+```
+
+### 清点结果的用法
+
+1. 存成 `coverage.md`，每项一行，标 ✅ / 📝 / ❌
+2. 数出 `total` 和 `written`，写进 `coverage.json`
+3. 跑 `verify.py --coverage coverage.json`
+4. 覆盖度 < 95% 就继续写，不要交付
+
+**注意**：`total` 要算「能力项」，不是「帮助文本行数」。
+一个命令算一项，一个参数算一项，一个导出符号算一项。
