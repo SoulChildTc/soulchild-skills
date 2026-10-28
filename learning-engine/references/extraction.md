@@ -193,3 +193,54 @@ git log -1 --format="%h %ci"
 ```
 
 写进页面底部或来源里。上游一改，至少知道对的是哪一版。
+
+---
+
+## 先查版本
+
+**每份抽取开工前必做。** 版本号决定了后面所有事实的有效期。
+
+```bash
+git describe --tags --always             # 有 git 仓库
+grep -m1 '^version' pyproject.toml       # Python
+node -p "require('./package.json').version"  # Node
+grep -m1 '^version' Cargo.toml           # Rust
+grep -m1 '"version"' composer.json       # PHP
+cat VERSION 2>/dev/null                  # 有些项目就一个文件
+```
+
+查不到就写「版本未知」，并降低原理关深度。不要用「最新版」代替具体版本——
+「最新」在写完这一页的第二周就不成立了。
+
+---
+
+## 先确认有没有 CLI
+
+容易漏。很多库带一层薄 CLI：
+
+```bash
+grep -rn "console_scripts\|\[project.scripts\]\|\[tool.poetry.scripts\]" pyproject.toml setup.py
+ls cli/ cmd/ bin/ 2>/dev/null
+grep -rn "fastapi-cli\|click\|commander\|cobra" --include="*.toml" --include="*.json" --include="*.go" | head
+```
+
+FastAPI 就是例子：主体是库，但 `fastapi/cli.py` 转发 `fastapi-cli`，提供 `dev` / `run`。
+如果没 grep 就断言「这个项目没有命令行」，会在正文里写出硬错。
+
+---
+
+## 按目的决定读多深
+
+读源码不等于学得更好。做错这一步，输出会从「能用的学习页」变成「源码考古报告」。
+
+| 目的 | 读 | 不读 |
+|---|---|---|
+| 上手用 | CLI/API 定义、`--help`、快速开始、常见坑 | 内部实现、设计模式、性能路径 |
+| 二次开发 | 架构分层、扩展点、公开 API 面、模块边界 | 逐行实现、历史提交 |
+| 选型 | 能力边界、天花板、对比项 | 安装步骤、命令全集 |
+| 讲清楚 | 核心概念、设计取舍、演进原因 | 参数清单 |
+
+判断标准：**这条事实能不能改变用户的操作方式**。不能，就不属于上手内容。
+
+反例：为了讲清 ripgrep 的参数去读 `Flag` trait 实现，得出「104 个 `impl Flag for`、
+7 个 Category」——对二次开发有用，对一周上手是噪音。
