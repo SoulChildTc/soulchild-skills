@@ -88,18 +88,23 @@ def run(rules, data):
                     break
 
     # ── conditional ──
+    #
+    # 每个 first 词单独判定。同一段里出现多个触发词时，
+    # 各自检查上下文，不能只取第一个。
     cond_soft = 0
     cfg = rules.get("conditional", {})
     for r in cfg.get("rules", []):
         for loc, t, raw, _ in texts:
-            first = next((f for f in r["first"] if f in t), None)
-            if not first:
+            hits = [f for f in r["first"] if f in t]
+            if not hits:
                 continue
+            # 依据可以在整段里找，也可以在同句里找
             ok = any(re.search(p, raw) for p in r["need_one_of"])
-            if ok:
-                continue
-            cond_soft += 1
-            warns.append(f"{loc} {r['message']}：「{first}」— {t[:48]}")
+            for first in hits:
+                if ok:
+                    continue
+                cond_soft += 1
+                warns.append(f"{loc} {r['message']}：「{first}」— {t[:48]}")
 
     if cond_soft >= agg:
         errors.append(f"空泛表述 {cond_soft} 处（阈值 {agg}），应补上具体值或做法")
