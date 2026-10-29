@@ -30,6 +30,7 @@
 
   --ok:#4A6741;
 
+  --read-size:17px;   /* 可由顶栏 A−/A+ 调整 */
   --serif:"Songti SC","STSong","Source Han Serif SC","Noto Serif CJK SC","Iowan Old Style",Georgia,serif;
   --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;
   --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
@@ -39,6 +40,7 @@
 html,body{height:100%}
 
 body{
+  text-spacing-trim:space-all;   /* 中文标点挤压（Safari/Chrome 121+） */
   background:var(--paper);
   color:var(--ink);
   font-family:var(--sans);
@@ -182,13 +184,15 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 
 #toc .foot{
   flex:0 0 auto;
-  padding:12px 14px 16px;
+  height:56px;
+  display:flex;align-items:center;
+  padding:0 14px;
   border-top:1px solid var(--rule-2);
 }
 #toc .look{
   display:flex;align-items:center;gap:8px;
   width:100%;
-  padding:9px 11px;
+  padding:8px 11px;
   border:1px solid var(--rule);
   font-size:12.5px;
   color:var(--ink-2);
@@ -212,6 +216,88 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
   position:relative;
 }
 
+/* ── 正文顶栏 ── */
+#bar{
+  flex:0 0 auto;
+  height:50px;
+  display:flex;align-items:center;gap:0;
+  padding:0 32px 0 44px;
+  border-bottom:1px solid var(--rule-2);
+  background:rgba(253,252,249,.92);
+  backdrop-filter:blur(8px);
+  z-index:8;
+}
+
+#bar .bar-sp{flex:1;min-width:14px}
+
+#menu{
+  display:none;
+  font-size:14px;
+  color:var(--ink-2);
+  padding:6px 9px;
+  margin-right:6px;
+  border:1px solid var(--rule);
+  line-height:1;
+}
+
+/* 面包屑 */
+#crumb{
+  display:flex;align-items:center;
+  min-width:0;
+  font-size:12.5px;
+}
+#crumb button{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 8px;
+  border-radius:2px;
+  max-width:260px;
+  color:var(--ink-3);
+  transition:color .14s,background .14s;
+}
+#crumb > button:first-child{padding-left:0}
+#crumb > button:first-child:hover{background:none}
+#crumb button:hover{color:var(--accent);background:var(--paper-2)}
+#crumb .cn{
+  font-family:var(--mono);font-size:9.5px;
+  color:var(--ink-4);
+  flex:0 0 auto;
+  letter-spacing:.04em;
+}
+#crumb button:hover .cn{color:var(--accent)}
+#crumb .ct{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#crumb .cur{color:var(--ink);font-weight:500}
+#crumb .cur .cn{color:var(--accent)}
+#crumb .sep{
+  color:var(--ink-4);font-size:10px;
+  flex:0 0 auto;
+  padding:0 1px;
+  opacity:.6;
+}
+
+/* 右侧：进度 + 字号 */
+#barMeta{
+  font-family:var(--mono);font-size:10.5px;
+  color:var(--ink-4);
+  letter-spacing:.04em;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+  margin-right:14px;
+}
+
+#fontCtl{display:flex;gap:1px}
+#fontCtl button{
+  font-family:var(--mono);font-size:10px;
+  color:var(--ink-4);
+  padding:4px 7px;
+  border:1px solid var(--rule-2);
+  transition:.14s;
+  line-height:1.4;
+}
+#fontCtl button:hover{color:var(--ink-2);border-color:var(--rule);background:var(--paper-2)}
+#fontCtl button:disabled{opacity:.3;cursor:default}
+
 #main{
   flex:1;min-height:0;
   overflow-y:auto;overscroll-behavior:contain;
@@ -232,20 +318,20 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
    ══════════════════════════════════════════════════════════════ */
 .opener{
   position:relative;
-  max-width:900px;margin:0 auto;
-  padding:110px 46px 120px;
+  max-width:788px;
+  padding:72px 44px 80px;
   overflow:hidden;
 }
 
 .opener .ghost{
   position:absolute;
-  top:30px;right:10px;
+  top:64px;right:44px;
   font-family:var(--serif);
-  font-size:clamp(180px,22vw,300px);
+  font-size:clamp(120px,14vw,168px);
   line-height:.8;
   font-weight:700;
-  color:rgba(28,25,23,.035);
-  letter-spacing:-.04em;
+  color:rgba(28,25,23,.045);
+  letter-spacing:-.05em;
   pointer-events:none;
   user-select:none;
 }
@@ -261,7 +347,7 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 .opener h1{
   position:relative;
   font-family:var(--serif);
-  font-size:clamp(38px,4.2vw,56px);
+  font-size:clamp(36px,3.8vw,50px);
   line-height:1.2;font-weight:700;
   letter-spacing:-.012em;
   margin-bottom:22px;
@@ -287,8 +373,8 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 .mini-toc{list-style:none;position:relative}
 .mini-toc button{
   display:grid;
-  grid-template-columns:34px 1fr auto;
-  gap:0 14px;align-items:baseline;
+  grid-template-columns:28px 1fr auto;
+  gap:0 12px;align-items:baseline;
   width:100%;text-align:left;
   padding:11px 0;
   border-bottom:1px solid var(--rule-2);
@@ -316,17 +402,16 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
    ══════════════════════════════════════════════════════════════ */
 .page{
   display:grid;
-  grid-template-columns:minmax(0,650px) 168px;
-  gap:0 54px;
-  justify-content:center;
+  grid-template-columns:minmax(0,640px) 164px;
+  gap:0 48px;
+  justify-content:start;
   max-width:1000px;
-  margin:0 auto;
-  padding:70px 46px 120px;
+  padding:64px 44px 110px;
 }
 
 /* 右侧边注：本页依据 */
 .notes{grid-column:2;position:relative}
-.notes .stick{position:sticky;top:36px}
+.notes .stick{position:sticky;top:34px}
 .notes .head{
   font-family:var(--mono);font-size:9px;
   letter-spacing:.14em;
@@ -391,10 +476,12 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
   line-height:1.28;font-weight:700;
   letter-spacing:-.015em;
   margin-bottom:24px;
+  overflow-wrap:break-word;
+  text-wrap:balance;
 }
 
 .lead{
-  font-size:19px;line-height:1.85;
+  font-size:calc(var(--read-size) + 2px);line-height:1.8;
   color:var(--ink-2);
   margin-bottom:32px;
   padding-bottom:30px;
@@ -404,7 +491,7 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 .lead em{font-style:normal;color:var(--accent)}
 
 .content p{
-  font-size:17px;line-height:1.95;
+  font-size:var(--read-size);line-height:1.95;
   color:var(--ink-2);
   margin-bottom:1.15em;
 }
@@ -422,10 +509,31 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 .content p code,
 .content li code,
 .lead code{
-  font-size:14.5px;
+  font-size:calc(var(--read-size) - 2.5px);
   color:var(--accent);
   background:var(--accent-2);
   padding:1px 5px;
+  /* 让长参数名能断，但不切碎单词 */
+  overflow-wrap:break-word;
+  word-break:break-all;
+  /* 断行时保留内边距，看起来像一整块 */
+  box-decoration-break:clone;
+  -webkit-box-decoration-break:clone;
+}
+
+/* 长英文串、URL、路径不撑破正文 */
+.content p,
+.content li,
+.lead{
+  overflow-wrap:break-word;
+  word-break:normal;
+  /* 中文长句优先在标点后断 */
+  line-break:strict;
+}
+
+/* 纯文本里的 URL：允许在斜杠后断，不切单词 */
+.content p:has(> a[href]),
+.content a[href]{
   overflow-wrap:anywhere;
 }
 
@@ -433,9 +541,10 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 .content ul li{
   position:relative;
   padding-left:22px;
-  font-size:17px;line-height:1.9;
+  font-size:var(--read-size);line-height:1.9;
   color:var(--ink-2);
   margin-bottom:11px;
+  text-indent:0;
 }
 .content ul li::before{
   content:"";
@@ -448,7 +557,7 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
   counter-increment:n;
   position:relative;
   padding-left:34px;
-  font-size:17px;line-height:1.85;
+  font-size:var(--read-size);line-height:1.85;
   color:var(--ink-2);
   margin-bottom:16px;
 }
@@ -478,11 +587,24 @@ pre{
   border-left:2px solid var(--rule);
   padding:18px 20px;
   overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
   font-size:13px;line-height:1.85;
   color:var(--ink-2);
+  width:100%;
   max-width:100%;
+  min-width:0;
   tab-size:2;
 }
+
+/* 代码块滚动条：细，不打断视觉 */
+pre::-webkit-scrollbar{height:7px}
+pre::-webkit-scrollbar-track{background:transparent}
+pre::-webkit-scrollbar-thumb{
+  background:rgba(28,25,23,.18);
+  border-radius:0;
+}
+pre::-webkit-scrollbar-thumb:hover{background:rgba(28,25,23,.3)}
 pre::-webkit-scrollbar{height:6px}
 pre::-webkit-scrollbar-thumb{background:rgba(28,25,23,.16)}
 pre code{white-space:pre;background:none;padding:0;font-size:inherit;color:inherit}
@@ -640,18 +762,6 @@ sup.cit{
 }
 .foot-src code{font-size:10.5px;color:var(--ink-2);word-break:break-word}
 
-/* 窄屏目录按钮 */
-#menu{
-  display:none;
-  position:fixed;top:14px;left:14px;z-index:100;
-  font-size:12.5px;color:var(--ink-2);
-  padding:7px 11px;
-  border:1px solid var(--rule);
-  background:rgba(253,252,249,.94);
-  backdrop-filter:blur(8px);
-  align-items:center;gap:6px;
-}
-
 /* ══════════════════════════════════════════════════════════════
    底栏
    ══════════════════════════════════════════════════════════════ */
@@ -659,7 +769,7 @@ sup.cit{
   flex:0 0 auto;
   height:56px;
   display:flex;align-items:center;gap:18px;
-  padding:0 46px;
+  padding:0 44px;
   border-top:1px solid var(--rule);
   background:rgba(253,252,249,.94);
   backdrop-filter:blur(8px);
@@ -668,7 +778,7 @@ sup.cit{
 #foot .nav{
   display:flex;align-items:center;gap:7px;
   font-size:13px;color:var(--ink-2);
-  padding:7px 13px;
+  height:34px;padding:0 14px;
   border:1px solid var(--rule);
   transition:.16s;
 }
@@ -848,9 +958,7 @@ sup.cit{
     background:rgba(28,25,23,.32);
   }
   #mask.on{display:block}
-  #menu{
-    display:flex;
-  }
+  #menu{display:block}
   .page{padding:44px 24px 90px}
   .content h2{font-size:26px}
   .lead{font-size:17px}
@@ -893,8 +1001,18 @@ sup.cit{
   </nav>
 
   <div id="stage">
+    <header id="bar">
+      <button id="menu" onclick="toggleToc(true)" aria-label="打开目录">☰</button>
+      <nav id="crumb" aria-label="当前位置"></nav>
+      <span class="bar-sp"></span>
+      <span id="barMeta"></span>
+      <div id="fontCtl">
+        <button data-size="down" title="缩小字号">A−</button>
+        <button data-size="up" title="放大字号">A+</button>
+      </div>
+    </header>
+
     <div id="main">
-      <button id="menu" onclick="toggleToc(true)">☰ 目录</button>
       <section class="screen" id="screenPage"></section>
     </div>
 
@@ -1282,7 +1400,69 @@ function toggleToc(open){
   $("mask").classList.toggle("on", open);
 }
 
+/* 字号：3 档，存 localStorage */
+const SIZES = [15, 17, 19];
+let sizeIdx = 1;
+try{
+  const v = parseInt(localStorage.getItem(SLUG + ".font"), 10);
+  if(!isNaN(v) && v >= 0 && v < SIZES.length) sizeIdx = v;
+}catch(e){}
+
+function applySize(){
+  document.documentElement.style.setProperty("--read-size", SIZES[sizeIdx] + "px");
+  const ctl = $("fontCtl");
+  if(ctl){
+    ctl.querySelector('[data-size="down"]').disabled = sizeIdx === 0;
+    ctl.querySelector('[data-size="up"]').disabled = sizeIdx === SIZES.length - 1;
+  }
+  try{ localStorage.setItem(SLUG + ".font", String(sizeIdx)); }catch(e){}
+}
+
+function changeSize(d){
+  const next = sizeIdx + d;
+  if(next < 0 || next >= SIZES.length) return;
+  sizeIdx = next;
+  applySize();
+}
+
+function renderBar(sc){
+  const crumb = $("crumb");
+  const meta = $("barMeta");
+
+  if(sc.type === "cover"){
+    crumb.innerHTML = `<button class="cur" onclick="goScreen(0)">
+      <span class="cn">目录</span></button>`;
+    meta.textContent = `${STAGES.length} 章 · ${pageTotal()} 节`;
+    return;
+  }
+
+  const st = STAGES[sc.s];
+  let html = `<button onclick="goScreen(0)"><span class="cn">目录</span></button>`;
+  html += `<span class="sep">/</span>`;
+
+  const openerIdx = SCREENS.findIndex(x => x.type === "opener" && x.s === sc.s);
+  if(sc.type === "opener"){
+    html += `<button class="cur"><span class="cn">${String(sc.s+1).padStart(2,"0")}</span>
+      <span class="ct">${esc(st.name)}</span></button>`;
+  } else {
+    html += `<button onclick="goScreen(${openerIdx})">
+      <span class="cn">${String(sc.s+1).padStart(2,"0")}</span>
+      <span class="ct">${esc(st.name)}</span></button>`;
+    html += `<span class="sep">/</span>`;
+    html += `<button class="cur"><span class="cn">${String(sc.i+1).padStart(2,"0")}</span>
+      <span class="ct">${esc(st.steps[sc.i].title)}</span></button>`;
+  }
+  crumb.innerHTML = html;
+
+  if(sc.type === "opener"){
+    meta.textContent = `${st.steps.length} 节`;
+  } else {
+    meta.textContent = `${sc.i+1} / ${st.steps.length}`;
+  }
+}
+
 function updateChrome(sc){
+  renderBar(sc);
   $("btnPrev").disabled = idx === 0;
   $("btnNext").disabled = idx === SCREENS.length-1;
   $("btnNext").innerHTML = idx === SCREENS.length-1
@@ -1432,6 +1612,12 @@ document.addEventListener("keydown", e=>{
 
 $("lookInput").addEventListener("input", e=>renderLook(e.target.value));
 
+document.getElementById("fontCtl").addEventListener("click", e=>{
+  const btn = e.target.closest("button[data-size]");
+  if(!btn) return;
+  changeSize(btn.dataset.size === "up" ? 1 : -1);
+});
+
 /* ══════════════════════════════════════════════════════════════
    启动
    ══════════════════════════════════════════════════════════════ */
@@ -1451,6 +1637,7 @@ $("lookInput").addEventListener("input", e=>renderLook(e.target.value));
     }
   }catch(e){}
 
+  applySize();
   goScreen(start);
 })();
 </script>
