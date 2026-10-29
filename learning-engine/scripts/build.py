@@ -246,6 +246,14 @@ def main():
     if not out:
         out = os.path.join(os.path.dirname(os.path.abspath(src)), "index.html")
 
+    # 一本书只能有一个 HTML。part1/part2 这种拆法会让读者在文件间跳，
+    # 丢掉统一目录和统一进度。
+    base = os.path.basename(out)
+    if re.match(r"^(part|vol|book)[-_]?\d+\.html$", base, re.I):
+        print(f"❌ 不要按册拆分文件：{base}")
+        print("   所有章节放进同一个 index.html，左栏会自动列出全部章节。")
+        sys.exit(1)
+
     size = build(data, out)
     print(f"✅  {out}")
     print(f"    {stages} 章 · {pages} 节 · {refs} 条参考 · {size/1024:.0f} KB")

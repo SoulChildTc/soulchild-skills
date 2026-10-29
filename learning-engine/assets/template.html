@@ -31,6 +31,11 @@
   --ok:#4A6741;
 
   --read-size:17px;   /* 可由顶栏 A−/A+ 调整 */
+  /*
+    正文列宽 = 视口 - 侧栏(254) - 依据栏(168) - 间距(56) - 内边距(88)
+    用 clamp 保证：最窄 32em（约 38 汉字），最宽 58em（约 60 汉字）
+  */
+  --col:clamp(560px, calc(100vw - 566px), 940px);
   --serif:"Songti SC","STSong","Source Han Serif SC","Noto Serif CJK SC","Iowan Old Style",Georgia,serif;
   --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;
   --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
@@ -133,10 +138,10 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 }
 .ch:hover .t{color:var(--ink)}
 
-/* 当前章 */
+/* 当前章：只标记竖线和字重，不铺底色 */
 .ch.cur{
   border-left-color:var(--accent);
-  background:var(--paper-2);
+  background:none;
 }
 .ch.cur .n{color:var(--accent)}
 .ch.cur .t{color:var(--ink);font-weight:600}
@@ -145,12 +150,24 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 .ch.done .t{color:var(--ink-3)}
 
 /* 节 */
-.secs{list-style:none;margin:0 0 6px}
+.secs{
+  list-style:none;
+  margin:0 0 8px;
+  /* 左侧一条细线，把子项框在父级下面 */
+  border-left:1px solid var(--rule-2);
+  margin-left:20px;
+  padding-left:0;
+  /* 右侧用负 margin 补回父级的 padding，让底色铺满 */
+  margin-right:-20px;
+  padding-right:0;
+}
 .sc{
   display:flex;align-items:baseline;gap:8px;
   width:100%;text-align:left;
-  padding:5px 20px 5px 38px;
+  padding:5px 20px 5px 12px;
   border-left:2px solid transparent;
+  margin-left:-1px;           /* 盖住容器那条线，当前项用红色替换 */
+  box-sizing:border-box;
   transition:background .14s,color .14s;
 }
 .sc:hover{background:var(--paper-2)}
@@ -169,10 +186,10 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 }
 .sc:hover .t{color:var(--ink-2)}
 
-/* 当前节 */
+/* 当前节：浅底 + 红竖线，和父级区分开 */
 .sc.cur{
   border-left-color:var(--accent);
-  background:var(--paper-2);
+  background:var(--paper-3);
 }
 .sc.cur .n{color:var(--accent)}
 .sc.cur .t{color:var(--ink);font-weight:500}
@@ -318,14 +335,26 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
    ══════════════════════════════════════════════════════════════ */
 .opener{
   position:relative;
-  max-width:788px;
-  padding:72px 44px 80px;
+  width:100%;
+  max-width:calc(var(--col) + 168px + 56px + 88px);
+  margin:0 auto;
+  box-sizing:border-box;
+  padding:20px 44px 80px;
   overflow:hidden;
+}
+
+/* 章首页正文区按正文列宽排版，水印单独定位不占宽 */
+.opener .kicker,
+.opener h1,
+.opener .abs,
+.opener .mini-label,
+.opener .mini-toc{
+  max-width:var(--col);
 }
 
 .opener .ghost{
   position:absolute;
-  top:64px;right:44px;
+  top:14px;right:44px;
   font-family:var(--serif);
   font-size:clamp(120px,14vw,168px);
   line-height:.8;
@@ -357,10 +386,9 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
   position:relative;
   font-size:18px;line-height:1.9;
   color:var(--ink-2);
-  max-width:560px;
-  padding-bottom:38px;
+  padding-bottom:34px;
   border-bottom:1px solid var(--rule);
-  margin-bottom:38px;
+  margin-bottom:34px;
 }
 
 .opener .mini-label{
@@ -400,13 +428,17 @@ code,kbd,pre{font-family:var(--mono);font-variant-ligatures:none}
 /* ══════════════════════════════════════════════════════════════
    正文页
    ══════════════════════════════════════════════════════════════ */
+/* 统一的内容区宽度：正文 + 依据栏 + 间距 */
 .page{
   display:grid;
-  grid-template-columns:minmax(0,640px) 164px;
-  gap:0 48px;
-  justify-content:start;
-  max-width:1000px;
-  padding:64px 44px 110px;
+  grid-template-columns:minmax(0,var(--col)) 168px;
+  gap:0 56px;
+  justify-content:center;
+  width:100%;
+  max-width:calc(var(--col) + 168px + 56px + 88px);
+  margin:0 auto;
+  box-sizing:border-box;
+  padding:44px 44px 110px;
 }
 
 /* 右侧边注：本页依据 */
@@ -934,9 +966,15 @@ sup.cit{
 /* ══════════════════════════════════════════════════════════════
    响应式
    ══════════════════════════════════════════════════════════════ */
+/* 超宽屏：正文列加宽，整体居中，避免右侧大片空白 */
+/* 窄屏：依据栏隐藏后，正文可以用满宽度 */
+@media (max-width:1180px){
+  :root{ --col:clamp(520px, calc(100vw - 340px), 760px); }
+}
+
 @media (max-width:1180px){
   #toc{flex:0 0 224px;width:224px}
-  .page{grid-template-columns:minmax(0,650px);justify-content:center;padding:60px 36px 110px}
+  .page{grid-template-columns:minmax(0,650px);justify-content:center;padding:20px 36px 110px}
   .notes{display:none}
   .content{grid-column:1}
   .foot-src{display:block}
@@ -969,9 +1007,10 @@ sup.cit{
   #foot .nav .k{display:none}
   .kv .row{grid-template-columns:1fr;gap:3px}
   .split{grid-template-columns:1fr}
-  .opener{padding:64px 24px 80px}
+  .opener{padding:20px 24px 72px}
   .opener h1{font-size:30px}
   .opener .abs{font-size:16px}
+  .opener .ghost{font-size:112px;top:10px;right:20px}
   #look .panel{margin:0;width:100%;max-height:100vh;height:100vh}
   #look input{padding:16px 18px;font-size:15px}
   #look .body{padding:4px 18px 20px}
