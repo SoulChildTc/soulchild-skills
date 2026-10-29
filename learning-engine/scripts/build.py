@@ -3,9 +3,14 @@
 从 content.json 生成单文件 HTML。
 
 用法：
-    python3 build.py content.json                 # 输出同目录 index.html
+    python3 build.py content.json                        # 输出同目录 index.html
     python3 build.py content.json -o out.html
-    python3 build.py content.json --check         # 只校验，不生成
+    python3 build.py content.json --theme longread        # 换模板
+    python3 build.py content.json --check                 # 只校验，不生成
+
+主题在 assets/templates/<name>/ 下，每个目录自足：
+    template.html   骨架 + 样式
+    engine.js       渲染引擎（含块渲染）
 
 职责分离：
     AI 只负责写 content.json（内容）
@@ -21,8 +26,17 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-TEMPLATE = os.path.join(ROOT, "assets", "template.html")
-SCHEMA = os.path.join(ROOT, "assets", "schema.json")
+ASSETS = os.path.join(ROOT, "assets")
+TEMPLATES = os.path.join(ASSETS, "templates")
+SCHEMA = os.path.join(ASSETS, "schema.json")
+
+# 每个模板是一个自足的目录：骨架 + 样式 + 引擎 + 块渲染全在里面。
+# 模板之间不共享文件，改一个不会波及另一个。
+THEMES = {
+    "paper": "paper",
+    "longread": "longread",
+}
+DEFAULT_THEME = "paper"
 
 
 # ══════════════════════════════════════════════════════════════
@@ -162,8 +176,10 @@ def check(data):
 # ══════════════════════════════════════════════════════════════
 # 生成
 # ══════════════════════════════════════════════════════════════
-def build(data, out_path):
-    tpl = open(TEMPLATE).read()
+def build(data, out_path, theme=DEFAULT_THEME):
+    tdir = os.path.join(TEMPLATES, THEMES[theme])
+    tpl = open(os.path.join(tdir, "template.html")).read()
+    engine = open(os.path.join(tdir, "engine.js")).read()
 
     payload = json.dumps(data, ensure_ascii=False, indent=1)
     # 转义 < > &：同时干掉 </script>、<!--、<script 三种注入
@@ -172,6 +188,10 @@ def build(data, out_path):
                .replace("<", "\\u003c")
                .replace(">", "\\u003e")
                .replace("&", "\\u0026"))
+
+    # 引擎先填 DATA，再整体塞进模板。
+    # re.sub 只扫一遍，所以 {{DATA}} 必须先在这一步换掉。
+    engine = engine.replace("{{DATA}}", payload)
 
     # 单次替换：避免 project 里含 {{DATA}} 被二次扫描
     def sub(m):
@@ -182,6 +202,8 @@ def build(data, out_path):
             return html_lib.escape(data["project"])
         if key == "DATA":
             return payload
+        if key == "ENGINE":
+            return engine
         raise KeyError(f"未知占位符: {{{{key}}}}")
 
     out = re.sub(r"\{\{(\w+)\}\}", sub, tpl)
@@ -189,7 +211,7 @@ def build(data, out_path):
     # 断言模板里的占位符都换掉了。
     # 只查模板原有的，不扫输出 —— 用户内容里可能真的含 {{...}}，
     # 那是数据，不是漏替换。
-    left = set(re.findall(r"\{\{(\w+)\}\}", tpl)) - {"LANG", "PROJECT", "DATA"}
+    left = set(re.findall(r"\{\{(\w+)\}\}", tpl)) - {"LANG", "PROJECT", "DATA", "ENGINE"}
     if left:
         raise RuntimeError(f"模板里有未知占位符: {', '.join(sorted(left))}")
 
@@ -209,11 +231,22 @@ def main():
     src = sys.argv[1]
     out = None
     check_only = "--check" in sys.argv
+    theme = DEFAULT_THEME
 
     if "-o" in sys.argv:
         i = sys.argv.index("-o")
         if i + 1 < len(sys.argv):
             out = sys.argv[i + 1]
+
+    if "--theme" in sys.argv:
+        i = sys.argv.index("--theme")
+        if i + 1 >= len(sys.argv):
+            print("--theme 需要一个值: " + " / ".join(THEMES))
+            sys.exit(2)
+        theme = sys.argv[i + 1]
+        if theme not in THEMES:
+            print(f"未知主题: {theme}，可选: {', '.join(THEMES)}")
+            sys.exit(2)
 
     try:
         data = json.load(open(src))
@@ -254,8 +287,8 @@ def main():
         print("   所有章节放进同一个 index.html，左栏会自动列出全部章节。")
         sys.exit(1)
 
-    size = build(data, out)
-    print(f"✅  {out}")
+    size = build(data, out, theme)
+    print(f"✅  {out}  [{theme}]")
     print(f"    {stages} 章 · {pages} 节 · {refs} 条参考 · {size/1024:.0f} KB")
 
 

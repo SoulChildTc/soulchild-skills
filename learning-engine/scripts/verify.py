@@ -74,14 +74,15 @@ def check_structure(html):
     if left & known:
         errors.append(f"模板占位符没替换：{', '.join(sorted(left & known))}")
 
-    # 必须有内容容器
-    for marker, desc in [
-        ('id="toc"', "左侧目录"),
-        ('id="main"', "正文区"),
-        ('const DATA =', "数据"),
+    # 必须有内容容器。目录的容器名随模板不同（toc / index），
+    # 但必须存在一个。
+    for markers, desc in [
+        (('id="toc"', 'id="index"'), "目录"),
+        (('id="main"',), "正文区"),
+        (('const DATA =',), "数据"),
     ]:
-        if marker not in html:
-            errors.append(f"缺少{desc}（找不到 {marker}）")
+        if not any(m in html for m in markers):
+            errors.append(f"缺少{desc}（找不到 {' 或 '.join(markers)}）")
 
     # 空数据
     if "const DATA = {}" in html or "const DATA = {\n}" in html:

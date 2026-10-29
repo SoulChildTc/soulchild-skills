@@ -21,10 +21,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 USAGE = """\
 用法：
-    python3 book.py check  content.json          结构 + 文风 + 顺序
-    python3 book.py build  content.json [-o out.html]
+    python3 book.py check  content.json              结构 + 文风 + 顺序
+    python3 book.py build  content.json [-o out.html] [--theme paper|longread]
     python3 book.py verify index.html [--expect content.json]
-    python3 book.py all    content.json           check + build + verify
+    python3 book.py all    content.json [--theme paper|longread]
 
 退出码：0 全过，1 有问题
 """
@@ -65,7 +65,7 @@ def cmd_check(path):
     return True
 
 
-def cmd_build(path, out=None):
+def cmd_build(path, out=None, theme=None):
     if not cmd_check(path):
         return False
 
@@ -76,6 +76,8 @@ def cmd_build(path, out=None):
     args = [path]
     if out:
         args += ["-o", out]
+    if theme:
+        args += ["--theme", theme]
 
     return run("build.py", args, "build.py")
 
@@ -87,12 +89,11 @@ def cmd_verify(html, expect=None):
     return run("verify.py", args, "verify.py")
 
 
-def cmd_all(path):
-    if not cmd_build(path):
+def cmd_all(path, theme=None, out=None):
+    if not cmd_build(path, out, theme):
         return False
 
-    base = os.path.dirname(os.path.abspath(path))
-    html = os.path.join(base, "index.html")
+    html = out or os.path.join(os.path.dirname(os.path.abspath(path)), "index.html")
 
     print(f"\n{'─' * 60}")
     print("  产物校验")
@@ -124,6 +125,12 @@ def main():
 
     path = rest[0]
 
+    theme = None
+    if "--theme" in rest:
+        i = rest.index("--theme")
+        if i + 1 < len(rest):
+            theme = rest[i + 1]
+
     if action == "check":
         sys.exit(0 if cmd_check(path) else 1)
 
@@ -133,7 +140,7 @@ def main():
             i = rest.index("-o")
             if i + 1 < len(rest):
                 out = rest[i + 1]
-        sys.exit(0 if cmd_build(path, out) else 1)
+        sys.exit(0 if cmd_build(path, out, theme) else 1)
 
     if action == "verify":
         expect = None
@@ -144,7 +151,12 @@ def main():
         sys.exit(0 if cmd_verify(path, expect) else 1)
 
     if action == "all":
-        sys.exit(0 if cmd_all(path) else 1)
+        out = None
+        if "-o" in rest:
+            i = rest.index("-o")
+            if i + 1 < len(rest):
+                out = rest[i + 1]
+        sys.exit(0 if cmd_all(path, theme, out) else 1)
 
 
 if __name__ == "__main__":
