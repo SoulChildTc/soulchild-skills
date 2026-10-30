@@ -150,6 +150,13 @@ def main():
         print(USAGE)
         sys.exit(2)
 
+    known_flags = {"-o", "--theme", "--expect", "--coverage"}
+    for a in rest[1:]:
+        if a.startswith("-") and a not in known_flags:
+            print(f"未知参数: {a}\n")
+            print(USAGE)
+            sys.exit(2)
+
     path = rest[0]
 
     theme = None
@@ -162,8 +169,10 @@ def main():
         coverage = None
         if "--coverage" in rest:
             i = rest.index("--coverage")
-            if i + 1 < len(rest):
-                coverage = rest[i + 1]
+            if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
+                print("--coverage 后面要跟 coverage.json 的路径")
+                sys.exit(2)
+            coverage = rest[i + 1]
         sys.exit(0 if cmd_check(path, coverage) else 1)
 
     if action == "build":
@@ -178,13 +187,17 @@ def main():
         expect = None
         if "--expect" in rest:
             i = rest.index("--expect")
-            if i + 1 < len(rest):
-                expect = rest[i + 1]
+            if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
+                print("--expect 后面要跟 content.json 的路径")
+                sys.exit(2)
+            expect = rest[i + 1]
         coverage = None
         if "--coverage" in rest:
             i = rest.index("--coverage")
-            if i + 1 < len(rest):
-                coverage = rest[i + 1]
+            if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
+                print("--coverage 后面要跟 coverage.json 的路径")
+                sys.exit(2)
+            coverage = rest[i + 1]
         sys.exit(0 if cmd_verify(path, expect, coverage) else 1)
 
     if action == "all":
@@ -196,8 +209,10 @@ def main():
         coverage = None
         if "--coverage" in rest:
             i = rest.index("--coverage")
-            if i + 1 < len(rest):
-                coverage = rest[i + 1]
+            if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
+                print("--coverage 后面要跟 coverage.json 的路径")
+                sys.exit(2)
+            coverage = rest[i + 1]
         sys.exit(0 if cmd_all(path, theme, out, coverage) else 1)
 
 

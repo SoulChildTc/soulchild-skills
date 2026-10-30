@@ -68,9 +68,12 @@ def check_structure(html):
             f"通常是内容里含 <!--<script> 之类的片段破坏了 HTML 解析"
         )
 
-    # 占位符不该残留
-    left = set(re.findall(r"\{\{(\w+)\}\}", html))
-    known = {"LANG", "PROJECT", "DATA"}
+    # 占位符不该残留。但正文里本来就可能出现 {{PROJECT}} 这种字样
+    # （比如教程在讲模板机制），那是数据不是漏替换。
+    # 所以只在 DATA 之外的地方找，且要求是同一种占位符连续出现。
+    outside = re.sub(r"const DATA = .*?\n\};", "", html, flags=re.S)
+    left = set(re.findall(r"\{\{(\w+)\}\}", outside))
+    known = {"LANG", "PROJECT", "DATA", "ENGINE"}
     if left & known:
         errors.append(f"模板占位符没替换：{', '.join(sorted(left & known))}")
 

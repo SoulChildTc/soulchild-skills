@@ -383,7 +383,10 @@ python3 $SKILL/scripts/book.py all   $DIR/content.json --coverage $DIR/coverage.
 **`content.json` 不要写进 skill 目录本身。** 放在你的工作目录，把路径传进去。
 
 **`--theme` 不传就是 paper。** 上一轮用 longread，这一轮忘了传，
-产物会被静默覆盖回 paper —— 所以每轮命令都带上 `--theme`，或者把命令记下来。
+产物会被静默覆盖回 paper（脚本会打印 `主题: paper（默认）`，但不会报错）。
+
+**定下主题后就不要反复切换。** 一个项目只该有一个主题，
+每轮都在同一条命令上带着它。切换主题等于重排整本书的版式。
 
 | 文件 | 管什么 | 谁改 |
 |---|---|---|
@@ -497,11 +500,15 @@ python3 $SKILL/scripts/book.py all   $DIR/content.json --coverage $DIR/coverage.
 **🔴 CHECKPOINT · 校验不通过不许交付**
 
 ```bash
-python3 $SKILL/scripts/book.py check content.json                    # 结构 + 文风 + 顺序
-python3 $SKILL/scripts/verify.py index.html --expect content.json     # 产物无损
+# $SKILL 和 $DIR 同第六步，别重新定义
+python3 $SKILL/scripts/book.py check $DIR/content.json --coverage $DIR/coverage.json
+python3 $SKILL/scripts/book.py verify $DIR/index.html --expect $DIR/content.json
 ```
 
-两个都过，才算可以交付。详细检查项和失败处理见 `references/checks.md`。
+两条都过，才算可以交付。`check` 带了 `--coverage` 就是三道闸门一起过：
+结构、覆盖度、产物往返。
+
+详细检查项和失败处理见 `references/checks.md`。
 
 最低要求：
 

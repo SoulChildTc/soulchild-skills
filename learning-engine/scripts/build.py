@@ -315,6 +315,14 @@ def main():
 
     try:
         data = json.load(open(src))
+    except FileNotFoundError:
+        print(f"FAIL  文件不存在: {src}")
+        print(f"      当前目录: {os.getcwd()}")
+        print(f"      提示: 路径相对当前目录解析，检查是不是少写了目录前缀")
+        sys.exit(1)
+    except IsADirectoryError:
+        print(f"FAIL  这是个目录，不是文件: {src}")
+        sys.exit(1)
     except json.JSONDecodeError as e:
         print(f"FAIL  content.json 不是合法 JSON")
         print(f"      第 {e.lineno} 行第 {e.colno} 列: {e.msg}")

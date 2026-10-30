@@ -135,22 +135,44 @@ def run(rules, data):
     dom = rules.get("domain", {})
 
     if dom.get("check_title_count"):
+        # 「三种」指的是哪一种，靠标题里的量词判断，不能对全页块取最大值 ——
+        # 一页里既有「三种命令」的 opts 又有 5 行退出码表时，取最大值会误杀。
         for si, st in enumerate(data.get("stages") or []):
             for ii, sp in enumerate(st.get("steps") or []):
-                claimed = claimed_count(sp.get("title", ""))
+                title = sp.get("title", "")
+                claimed = claimed_count(title)
                 if not claimed:
                     continue
-                actual = 0
+
+                counts = {
+                    "种": [], "个": [], "类": [], "条": [], "步": [], "层": [],
+                }
                 for b in sp.get("blocks") or []:
-                    if b.get("type") in ("opts", "ul", "ol"):
-                        actual = max(actual, len(b.get("items") or []))
-                    elif b.get("type") == "table":
-                        # 表格的「行」也是条目：「三种命令」配三行表格
-                        actual = max(actual, len(b.get("rows") or []))
-                if actual and claimed != actual:
-                    errors.append(
-                        f"{si+1}-{ii+1}「{sp['title']}」声称 {claimed}，实际 {actual}"
-                    )
+                    t = b.get("type")
+                    if t in ("opts", "ul", "ol"):
+                        n = len(b.get("items") or [])
+                    elif t in ("split",):
+                        n = len(b.get("items") or [])
+                    elif t == "table":
+                        n = len(b.get("rows") or [])
+                    elif t == "kv":
+                        n = len(b.get("items") or [])
+                    else:
+                        continue
+                    counts["种"].append(n)
+                    counts["个"].append(n)
+
+                pool = counts["种"] or counts["个"]
+                if not pool:
+                    continue
+                # 只要有一个块的数量和标题声明一致，就算说得通
+                if claimed in pool:
+                    continue
+                # 对不上时再判断：所有候选块都不等于 claimed 才报
+                errors.append(
+                    f"{si+1}-{ii+1}「{title}」声称 {claimed}，"
+                    f"实际条目数是 {sorted(set(pool))}"
+                )
 
     if dom.get("check_source_kind_mix"):
         src = data.get("sources") or {}
