@@ -6,23 +6,42 @@
 
 ## 一、清点：先列全
 
-### CLI
+### CLI：先分清有没有子命令
 
 ```bash
 TOOL=your-tool
 
-# 1. 所有子命令
-$TOOL --help | grep -E "^\s+[a-z][a-z-]+" | awk '{print $1}'
+# 有没有子命令？没有的话（rg、jq 这类）跳过第 2 步
+$TOOL --help | grep -qE "^\s{2,}[a-z][a-z-]+\s{2,}\S" && echo "有子命令" || echo "没有子命令"
+```
 
-# 2. 每个命令的参数（逐个跑，全部保存）
+**有子命令时：**
+
+```bash
+# 1. 列出子命令
+$TOOL --help | grep -oE "^\s{2,}[a-z][a-z-]+" | tr -d ' ' | sort -u
+
+# 2. 每个子命令的参数（逐个跑，全部保存）
 $TOOL --help > /tmp/help-root.txt
-for c in $($TOOL --help | grep -E "^\s+[a-z][a-z-]+" | awk '{print $1}'); do
+for c in $($TOOL --help | grep -oE "^\s{2,}[a-z][a-z-]+" | tr -d ' ' | sort -u); do
   $TOOL "$c" --help > "/tmp/help-$c.txt" 2>/dev/null
 done
-
-# 3. 数总数
-cat /tmp/help-*.txt | grep -cE "^\s+(-|--)"
 ```
+
+**数总数（两种都要用这个）：**
+
+```bash
+# 只数「看起来像参数」的行首，去重
+# 不要用 grep -c "^\s+(-|--)" —— 那会把说明行也算进去
+cat /tmp/help-*.txt 2>/dev/null | grep -oE '^\s+-{1,2}[A-Za-z0-9][A-Za-z0-9_-]*' \
+  | tr -d ' ' | sort -u | wc -l
+```
+
+为什么不能直接数行：`--help` 里描述换行后常以 `-` 开头，会被算成参数。
+实测 ripgrep 15.1.0，粗数得 145，真实是 106 —— 分母错 27%，后面覆盖度全废。
+
+**数出来的数字要能对得上。** 抽完写进 `coverage.md` 时，
+如果发现「参数 106 项」但表里只列了 80 行，说明漏了，回去补。
 
 ### 库 / SDK
 
@@ -49,11 +68,24 @@ python3 -c "import json;print(len(json.load(open('schema.json'))['properties']))
 
 ### 环境变量
 
+**数据库要给全，只 grep Python/JS 会漏掉 Rust、Go、C。**
+
 ```bash
-grep -rhoE "environ\.get\(['\"][A-Z_]+|getenv\(['\"][A-Z_]+" --include="*.py" | \
-  grep -oE "[A-Z_]{3,}" | sort -u > /tmp/envars.txt
-wc -l /tmp/envars.txt
+{
+  # Python / JS
+  grep -rhoE "environ\.get\(['\"][A-Z_]+|getenv\(['\"][A-Z_]+|process\.env\.[A-Z_]+" \
+    --include="*.py" --include="*.js" --include="*.ts" 2>/dev/null
+  # Rust
+  grep -rhoE 'env::var\("[A-Z_]+' --include="*.rs" 2>/dev/null | sed 's/.*"//'
+  # Go
+  grep -rhoE 'Getenv\("[A-Z_]+' --include="*.go" 2>/dev/null | sed 's/.*"//'
+} | grep -oE "[A-Z_]{3,}" | sort -u > /tmp/envars.txt
+
+wc -l < /tmp/envars.txt
 ```
+
+实测：ripgrep 是 Rust 项目，只 grep Python 会得到 0 项，
+而它确实有 `RIPGREP_CONFIG_PATH`。
 
 ### 计数规则
 
@@ -130,7 +162,7 @@ wc -l /tmp/envars.txt
 跑校验：
 
 ```bash
-python3 scripts/verify.py output.html --coverage coverage.json
+python3 scripts/verify.py index.html --coverage coverage.json
 ```
 
 ---
@@ -159,7 +191,7 @@ python3 scripts/verify.py output.html --coverage coverage.json
 
 ## 分轮写
 
-轮次的划分见 SKILL.md「分轮写，但只有一本书」。这里只讲每轮内部怎么做。
+轮次按总章数定，规则见 SKILL.md「分轮写，但只有一本书」。这里只讲每轮内部怎么做。
 
 ### 每轮开始前必做
 

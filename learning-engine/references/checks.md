@@ -7,7 +7,7 @@
 ## 一、结构与覆盖度校验
 
 ```bash
-python3 scripts/verify.py output.html --coverage coverage.json
+python3 scripts/verify.py index.html --coverage coverage.json
 ```
 
 `coverage.json` 是清点结果：
@@ -67,10 +67,10 @@ for k,v in data["sources"].items():
 PY
 
 # 逐条打出来看内容对不对
-while read path line key; do
-  f="${path#/}"        # 去掉开头的斜杠
-  printf "%-40s %5s | " "$path" "$line"
-  sed -n "${line}p" "$f" | cut -c1-60
+# 注意：变量别叫 path —— zsh 里 PATH 是数组，会覆盖掉搜索路径
+while IFS=" " read -r fpath fline fkey; do
+  printf "%-40s %5s | " "$fpath" "$fline"
+  sed -n "${fline}p" "$fpath" | cut -c1-60
 done < /tmp/srcs.txt
 ```
 

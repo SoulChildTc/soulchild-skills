@@ -38,6 +38,18 @@ THEMES = {
 }
 DEFAULT_THEME = "paper"
 
+# 引擎只认这十种块；写差一个字，模板走 default 分支输出空字符串，
+# 页面看着"校验全过"，实际整段内容丢了。所以必须在这里拦住。
+BLOCK_TYPES = {"p", "h3", "ul", "ol", "note", "warn", "code", "table", "kv", "split", "opts"}
+BLOCK_REQUIRED = {
+    "p": ("text",), "h3": ("text",),
+    "ul": ("items",), "ol": ("items",),
+    "note": ("text",), "warn": ("text",),
+    "code": ("code",),
+    "table": ("head", "rows"),
+    "kv": ("items",), "split": ("items",), "opts": ("items",),
+}
+
 
 # ══════════════════════════════════════════════════════════════
 # 校验
@@ -131,6 +143,13 @@ def manual_check(data):
 
             for b in blocks:
                 t = b.get("type")
+                if t not in BLOCK_TYPES:
+                    errs.append(f"{p} 未知块类型 {t!r}，渲染时会被静默丢弃")
+                    continue
+                # 各块的必填字段：缺了会渲染成空，必须在这里拦住
+                for fld in BLOCK_REQUIRED.get(t, ()):
+                    if not b.get(fld):
+                        errs.append(f"{p} 的 {t} 块缺 {fld}，渲染时会被静默丢弃")
                 if t == "table":
                     head = b.get("head") or []
                     rows = b.get("rows") or []

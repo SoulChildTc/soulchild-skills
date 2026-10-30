@@ -206,9 +206,13 @@ def main():
         errors += check_roundtrip(html, expect)
 
     cov_msg = None
+    cov_checked = False
     if "--coverage" in sys.argv:
         i = sys.argv.index("--coverage")
-        if i + 1 < len(sys.argv):
+        if i + 1 >= len(sys.argv):
+            errors.append("--coverage 后面要跟 coverage.json 的路径")
+        else:
+            cov_checked = True
             level, cov_msg = check_coverage(sys.argv[i + 1])
             if level == "error":
                 errors.append(cov_msg)
@@ -245,7 +249,7 @@ def main():
 
     if expect:
         print("    往返比对一致")
-    if cov_msg is None and "--coverage" in sys.argv:
+    if cov_checked and cov_msg is None:
         print("    覆盖度达标")
 
 

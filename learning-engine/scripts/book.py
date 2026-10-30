@@ -23,8 +23,8 @@ USAGE = """\
 用法：
     python3 book.py check  content.json              结构 + 文风 + 顺序
     python3 book.py build  content.json [-o out.html] [--theme paper|longread]
-    python3 book.py verify index.html [--expect content.json]
-    python3 book.py all    content.json [--theme paper|longread]
+    python3 book.py verify index.html [--expect content.json] [--coverage coverage.json]
+    python3 book.py all    content.json [--theme paper|longread] [--coverage coverage.json]
 
 退出码：0 全过，1 有问题
 """
@@ -82,14 +82,16 @@ def cmd_build(path, out=None, theme=None):
     return run("build.py", args, "build.py")
 
 
-def cmd_verify(html, expect=None):
+def cmd_verify(html, expect=None, coverage=None):
     args = [html]
     if expect:
         args += ["--expect", expect]
+    if coverage:
+        args += ["--coverage", coverage]
     return run("verify.py", args, "verify.py")
 
 
-def cmd_all(path, theme=None, out=None):
+def cmd_all(path, theme=None, out=None, coverage=None):
     if not cmd_build(path, out, theme):
         return False
 
@@ -99,9 +101,10 @@ def cmd_all(path, theme=None, out=None):
     print("  产物校验")
     print(f"{'─' * 60}")
 
-    ok = cmd_verify(html, path)
+    ok = cmd_verify(html, path, coverage)
     if ok:
         print("\n✅ 全部通过")
+        print(f"    主题: {theme or 'paper（默认）'}")
     return ok
 
 
@@ -148,7 +151,12 @@ def main():
             i = rest.index("--expect")
             if i + 1 < len(rest):
                 expect = rest[i + 1]
-        sys.exit(0 if cmd_verify(path, expect) else 1)
+        coverage = None
+        if "--coverage" in rest:
+            i = rest.index("--coverage")
+            if i + 1 < len(rest):
+                coverage = rest[i + 1]
+        sys.exit(0 if cmd_verify(path, expect, coverage) else 1)
 
     if action == "all":
         out = None
@@ -156,7 +164,12 @@ def main():
             i = rest.index("-o")
             if i + 1 < len(rest):
                 out = rest[i + 1]
-        sys.exit(0 if cmd_all(path, theme, out) else 1)
+        coverage = None
+        if "--coverage" in rest:
+            i = rest.index("--coverage")
+            if i + 1 < len(rest):
+                coverage = rest[i + 1]
+        sys.exit(0 if cmd_all(path, theme, out, coverage) else 1)
 
 
 if __name__ == "__main__":

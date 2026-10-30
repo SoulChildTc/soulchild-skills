@@ -34,19 +34,59 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import plain, load
 
-# ── 这些不算术语：命令本身、通用词、单位 ──
+# ── 这些不算术语：常见子命令动词、shell 参数、通用词 ──
+# 项目自己的名字不写死在这里 —— 见 tool_names()，从 data 里现推。
 STOP = set("""
-docker run ps images start stop kill rm create exec logs inspect stats top diff cp
+run ps images start stop kill rm create exec logs inspect stats top diff cp
 save load export import tag push pull login logout version info search
-build builder buildx compose system container image manifest
-plugin context checkpoint bake
+build builder system container image manifest
 bash sh sh -it -i -t -d -p -v -f -m -u -e
 true false none null yes no
 localhost stdout stdin stderr exit
 """.split())
 
 
-def extract_terms(blocks):
+def tool_names(data):
+    """从数据里推出「这个项目自己叫什么」。
+
+    代码块首词常常就是工具名（`rg 'fn main' src/` 的 `rg`）。
+    把它当术语抽出来，就会出现「1-1 用了 rg，但 2-1 才讲它」这种假报。
+    工具名从三处取：slug、project、reference 的 key 首词。
+    """
+    names = set()
+    blob = [data.get("slug") or "", data.get("project") or ""]
+    for r in data.get("reference") or []:
+        key = (r.get("key") or "").strip()
+        if key:
+            blob.append(key.split()[0])
+    for w in blob:
+        w = w.strip().lower()
+        if w:
+            names.add(w)
+            names.add(w.replace("-", ""))
+
+    # 兜底：代码块首词在所有页里都出现 → 那是工具名，不是概念
+    firsts = {}
+    for st in data.get("stages") or []:
+        for sp in st.get("steps") or []:
+            for b in sp.get("blocks") or []:
+                if b.get("type") == "code":
+                    for line in (b.get("code") or "").split("\n"):
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            t = line.split()[0]
+                            if re.match(r"^[a-zA-Z][\w.-]*$", t):
+                                firsts[t.lower()] = firsts.get(t.lower(), 0) + 1
+    pages = sum(len(st.get("steps") or []) for st in data.get("stages") or [])
+    if pages:
+        for t, n in firsts.items():
+            if n >= max(2, pages // 2):
+                names.add(t)
+
+    return names
+
+
+def extract_terms(blocks, extra_stop=()):
     """从代码标签和代码块里提取候选术语。"""
     blob = json.dumps(blocks, ensure_ascii=False)
     terms = set()
@@ -78,7 +118,8 @@ def extract_terms(blocks):
                 if 2 <= len(tok) <= 28 and re.match(r"^[a-zA-Z][\w.-]*$", tok):
                     terms.add(tok)
 
-    return {t for t in terms if t.lower() not in STOP and len(t) >= 2}
+    skip = STOP | {x.lower() for x in extra_stop}
+    return {t for t in terms if t.lower() not in skip and len(t) >= 2}
 
 
 def check(data):
@@ -99,6 +140,8 @@ def check(data):
                 "chapter": st.get("name", ""),
             })
 
+    extra = tool_names(data)
+
     # ── 1. 建立术语 → 引入位置 ──
     #
     # 「引入」的判定：该页是术语的**首次出现**，且这一页给了它足够篇幅
@@ -108,7 +151,7 @@ def check(data):
     occurrences = {}   # term -> [(index, count)]
 
     for i, p in enumerate(pages):
-        terms = extract_terms(p["blocks"])
+        terms = extract_terms(p["blocks"], extra)
         for t in terms:
             if t not in first_use:
                 first_use[t] = i
@@ -152,7 +195,7 @@ def check(data):
     # ── 3. 概念跳跃：单页新术语太多 ──
     seen = set()
     for p in pages:
-        terms = extract_terms(p["blocks"])
+        terms = extract_terms(p["blocks"], extra)
         new = terms - seen
         seen |= terms
         if len(new) > 6:
