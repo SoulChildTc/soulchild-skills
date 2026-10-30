@@ -505,8 +505,12 @@ python3 $SKILL/scripts/book.py check $DIR/content.json --coverage $DIR/coverage.
 python3 $SKILL/scripts/book.py verify $DIR/index.html --expect $DIR/content.json
 ```
 
-两条都过，才算可以交付。`check` 带了 `--coverage` 就是三道闸门一起过：
-结构、覆盖度、产物往返。
+两条都过，才算可以交付。分工：
+
+- `check` 管**内容**：结构、文风、顺序、覆盖度。它不看产物
+- `verify` 管**产物**：DATA 能否原样还原、HTML 有没有被破坏、往返比对
+
+**两条都不能省。** 只跑 `check` 不会发现「生成时数据被改坏」这类问题。
 
 详细检查项和失败处理见 `references/checks.md`。
 

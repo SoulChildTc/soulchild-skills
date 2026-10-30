@@ -56,7 +56,10 @@ def run(script, args, label, strict=False):
 
 
 def cmd_check(path, coverage=None):
-    """结构 + 文风 + 顺序。带了 --coverage 就顺带查覆盖度自洽。"""
+    """结构 + 文风 + 顺序。带了 --coverage 就顺带查覆盖度自洽。
+
+    注意：这里**不查产物**。产物比对要 index.html 存在，属于 verify 的事。
+    """
     if coverage:
         level, msg = check_coverage_quick(coverage)
         print(f"\n{'─' * 60}")
@@ -132,6 +135,22 @@ def cmd_all(path, theme=None, out=None, coverage=None):
     return ok
 
 
+def take_opt(rest, flag):
+    """取 flag 后面的值。缺值或后面跟的是另一个 flag 就报错退出。
+
+    这类错误必须 exit 2 而不是静默用默认值 —— 用户以为传了参数，
+    实际没传，闸门就悄悄消失。
+    """
+    if flag not in rest:
+        return None
+    i = rest.index(flag)
+    if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
+        print(f"{flag} 后面要跟一个值")
+        print(USAGE)
+        sys.exit(2)
+    return rest[i + 1]
+
+
 def main():
     if len(sys.argv) < 2:
         print(USAGE)
@@ -158,62 +177,27 @@ def main():
             sys.exit(2)
 
     path = rest[0]
-
-    theme = None
-    if "--theme" in rest:
-        i = rest.index("--theme")
-        if i + 1 < len(rest):
-            theme = rest[i + 1]
+    theme = take_opt(rest, "--theme")
+    if theme and theme not in ("paper", "longread"):
+        print(f"未知主题: {theme}，可选: paper, longread")
+        sys.exit(2)
 
     if action == "check":
-        coverage = None
-        if "--coverage" in rest:
-            i = rest.index("--coverage")
-            if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
-                print("--coverage 后面要跟 coverage.json 的路径")
-                sys.exit(2)
-            coverage = rest[i + 1]
-        sys.exit(0 if cmd_check(path, coverage) else 1)
+        if theme:
+            print("check 不需要 --theme（它只读 content.json，不生成）")
+            sys.exit(2)
+        sys.exit(0 if cmd_check(path, take_opt(rest, "--coverage")) else 1)
 
     if action == "build":
-        out = None
-        if "-o" in rest:
-            i = rest.index("-o")
-            if i + 1 < len(rest):
-                out = rest[i + 1]
-        sys.exit(0 if cmd_build(path, out, theme) else 1)
+        sys.exit(0 if cmd_build(path, take_opt(rest, "-o"), theme) else 1)
 
     if action == "verify":
-        expect = None
-        if "--expect" in rest:
-            i = rest.index("--expect")
-            if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
-                print("--expect 后面要跟 content.json 的路径")
-                sys.exit(2)
-            expect = rest[i + 1]
-        coverage = None
-        if "--coverage" in rest:
-            i = rest.index("--coverage")
-            if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
-                print("--coverage 后面要跟 coverage.json 的路径")
-                sys.exit(2)
-            coverage = rest[i + 1]
-        sys.exit(0 if cmd_verify(path, expect, coverage) else 1)
+        sys.exit(0 if cmd_verify(path, take_opt(rest, "--expect"),
+                                 take_opt(rest, "--coverage")) else 1)
 
     if action == "all":
-        out = None
-        if "-o" in rest:
-            i = rest.index("-o")
-            if i + 1 < len(rest):
-                out = rest[i + 1]
-        coverage = None
-        if "--coverage" in rest:
-            i = rest.index("--coverage")
-            if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
-                print("--coverage 后面要跟 coverage.json 的路径")
-                sys.exit(2)
-            coverage = rest[i + 1]
-        sys.exit(0 if cmd_all(path, theme, out, coverage) else 1)
+        sys.exit(0 if cmd_all(path, theme, take_opt(rest, "-o"),
+                              take_opt(rest, "--coverage")) else 1)
 
 
 if __name__ == "__main__":

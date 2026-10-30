@@ -144,31 +144,29 @@ def run(rules, data):
                 if not claimed:
                     continue
 
-                counts = {
-                    "种": [], "个": [], "类": [], "条": [], "步": [], "层": [],
-                }
+                # 「三种命令」既可能写成 3 个 opts，也可能写成 3 个 code 块
+                # 或 3 个 warn。所有「能数出条目」的块都进候选池，
+                # 只要有一个数量对得上就算说得通 —— 不能只认列表类。
+                multi = []   # 本身就含多条的块：取它自己的条数
+                singles = 0  # 单个 code / note / warn / h3：累计个数
+
                 for b in sp.get("blocks") or []:
                     t = b.get("type")
-                    if t in ("opts", "ul", "ol"):
-                        n = len(b.get("items") or [])
-                    elif t in ("split",):
-                        n = len(b.get("items") or [])
+                    if t in ("opts", "ul", "ol", "split", "kv"):
+                        multi.append(len(b.get("items") or []))
                     elif t == "table":
-                        n = len(b.get("rows") or [])
-                    elif t == "kv":
-                        n = len(b.get("items") or [])
-                    else:
-                        continue
-                    counts["种"].append(n)
-                    counts["个"].append(n)
+                        multi.append(len(b.get("rows") or []))
+                    elif t in ("code", "note", "warn", "h3"):
+                        singles += 1
 
-                pool = counts["种"] or counts["个"]
+                pool = list(multi)
+                if singles > 1:
+                    pool.append(singles)
                 if not pool:
                     continue
-                # 只要有一个块的数量和标题声明一致，就算说得通
+                # 只要有一种数法和标题声明一致，就算说得通
                 if claimed in pool:
                     continue
-                # 对不上时再判断：所有候选块都不等于 claimed 才报
                 errors.append(
                     f"{si+1}-{ii+1}「{title}」声称 {claimed}，"
                     f"实际条目数是 {sorted(set(pool))}"
