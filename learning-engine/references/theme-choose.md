@@ -45,7 +45,7 @@
 `content.json` 不用改。换主题只改一条命令：
 
 ```bash
-python3 scripts/book.py build content.json --theme longread
+python3 $SKILL/scripts/book.py build content.json --theme longread
 ```
 
 但**写完内容再换主题要看一遍排版**：两套对正文的排法不同（paper 段间空行、longread 首行缩进），段落的视觉密度会变。如果某节在 paper 里刚好一屏，换到 longread 就不是了 —— 这通常不影响，但要知道它会发生。

@@ -162,7 +162,7 @@ wc -l < /tmp/envars.txt
 跑校验：
 
 ```bash
-python3 scripts/verify.py index.html --coverage coverage.json
+python3 $SKILL/scripts/verify.py index.html --coverage coverage.json
 ```
 
 ---
@@ -210,7 +210,7 @@ python3 scripts/verify.py index.html --coverage coverage.json
 
 1. 把新章节追加到 `stages` 数组
 2. 更新 `coverage.json` 的 `written`
-3. 跑 `python3 scripts/book.py all content.json`
+3. 跑 `python3 $SKILL/scripts/book.py all content.json`
 4. 告诉用户：「已写 N 章 M 节，覆盖 X/Y 项。还差 Z。」
 
 ### 章节顺序

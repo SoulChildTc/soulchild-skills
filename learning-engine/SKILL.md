@@ -291,6 +291,8 @@ description: >
 **规则 2：一个概念只引入一次。** 第一次出现的地方讲透，后面只调用不复述。
 
 **规则 3：单页最多引入 4 个新概念。** 超过就拆页，或把概念挪到后面。
+`order.py` 的阈值放宽到 6 才会报警——**4 是编辑标准，6 是机器兜底**，
+两者不冲突：脚本只在明显塞爆时提示，具体压到几个由你判断。
 
 ### 台账存在哪
 
@@ -356,20 +358,21 @@ description: >
 
 **你只写 `content.json`，渲染交给 `scripts/build.py`。不要手写 HTML，不要改样式。**
 
-**所有命令都在 skill 目录下跑。** 换个目录执行会找不到 `scripts/book.py`。
+**命令里的 `<skill>` 换成这个 skill 的实际路径。** 内容文件用绝对路径或相对当前目录
+的路径都行，产物生成在内容文件同目录的 `index.html`。
 
 ```bash
-cd <skill 目录>
-python3 scripts/book.py check content.json                    # 结构 + 文风 + 顺序
-python3 scripts/book.py build content.json                    # 校验通过才生成
-python3 scripts/book.py all   content.json --theme longread    # 换模板，三步全跑
-python3 scripts/book.py all   content.json --coverage coverage.json   # 带覆盖度闸门
+SKILL=~/.agents/skills/learning-engine      # 换成本机实际路径
+
+python3 $SKILL/scripts/book.py check <内容>/content.json        # 结构 + 文风 + 顺序
+python3 $SKILL/scripts/book.py build <内容>/content.json        # 校验通过才生成
+python3 $SKILL/scripts/book.py all   <内容>/content.json --theme longread
+python3 $SKILL/scripts/book.py all   <内容>/content.json --coverage <内容>/coverage.json
 ```
 
 只有一个入口。`check` 失败即停，不用自己判断先修哪个。
 
-`content.json` 放哪都行，**把路径传给命令**即可；产物生成在它同目录的 `index.html`。
-不要把它写进 skill 目录本身。
+**`content.json` 不要写进 skill 目录本身。** 放在你的工作目录，把路径传进去。
 
 **`--theme` 不传就是 paper。** 上一轮用 longread，这一轮忘了传，
 产物会被静默覆盖回 paper —— 所以每轮命令都带上 `--theme`，或者把命令记下来。
@@ -482,8 +485,8 @@ python3 scripts/book.py all   content.json --coverage coverage.json   # 带覆�
 **🔴 CHECKPOINT · 校验不通过不许交付**
 
 ```bash
-python3 scripts/book.py check content.json                    # 结构 + 文风 + 顺序
-python3 scripts/verify.py index.html --expect content.json     # 产物无损
+python3 $SKILL/scripts/book.py check content.json                    # 结构 + 文风 + 顺序
+python3 $SKILL/scripts/verify.py index.html --expect content.json     # 产物无损
 ```
 
 两个都过，才算可以交付。详细检查项和失败处理见 `references/checks.md`。

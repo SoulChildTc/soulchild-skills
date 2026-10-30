@@ -264,7 +264,7 @@ grep -cE "^\s*pub (fn|struct|enum|trait|const)" src/lib.rs
 
 1. 存成 `coverage.md`，每项一行，标 ✅ / 📝 / ❌
 2. 数出 `total` 和 `written`，写进 `coverage.json`
-3. 跑 `python3 scripts/verify.py index.html --coverage coverage.json`
+3. 跑 `python3 $SKILL/scripts/verify.py index.html --coverage coverage.json`
 4. 覆盖度 < 95% 就继续写，不要交付
 
 **注意**：`total` 要算「能力项」，不是「帮助文本行数」。

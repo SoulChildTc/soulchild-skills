@@ -38,7 +38,7 @@ THEMES = {
 }
 DEFAULT_THEME = "paper"
 
-# 引擎只认这十种块；写差一个字，模板走 default 分支输出空字符串，
+# 引擎只认这十一种块；写差一个字，模板走 default 分支输出空字符串，
 # 页面看着"校验全过"，实际整段内容丢了。所以必须在这里拦住。
 BLOCK_TYPES = {"p", "h3", "ul", "ol", "note", "warn", "code", "table", "kv", "split", "opts"}
 BLOCK_REQUIRED = {
@@ -89,6 +89,14 @@ def manual_check(data):
     intro = data.get("intro", "")
     if intro and len(intro) < 40:
         errs.append(f"intro 太短（{len(intro)} 字），应写明版本、范围、不覆盖什么")
+    if len(intro) > 400:
+        errs.append(f"intro 有 {len(intro)} 字，超过 400，读者不会读完")
+
+    # 字段长度：schema 里有限制，零依赖环境下也得拦
+    for f, lo, hi in (("project", 1, 40), ("subtitle", 2, 60)):
+        v = str(data.get(f) or "")
+        if hi and len(v) > hi:
+            errs.append(f"{f} 有 {len(v)} 字，超过 {hi}")
 
     src = data.get("sources") or {}
     for k, v in src.items():
@@ -101,6 +109,8 @@ def manual_check(data):
             errs.append(f"来源 {k} 缺 path")
         if not v.get("why"):
             errs.append(f"来源 {k} 缺 why")
+        elif len(v["why"]) > 80:
+            errs.append(f"来源 {k} 的 why 有 {len(v['why'])} 字，超过 80，写成一句话")
 
     stages = data.get("stages") or []
     if not stages:
@@ -111,16 +121,24 @@ def manual_check(data):
         loc = f"第 {si+1} 章「{st.get('name','?')}」"
         if not st.get("name"):
             errs.append(f"{loc} 缺 name")
+        elif len(st["name"]) > 20:
+            errs.append(f"{loc} 章名 {len(st['name'])} 字，超过 20")
         if not st.get("desc"):
             errs.append(f"{loc} 缺 desc")
+        elif len(st.get("desc", "")) > 150:
+            errs.append(f"{loc} 的 desc 超过 150 字")
         steps = st.get("steps") or []
         if not steps:
             errs.append(f"{loc} 没有 steps")
+        if len(steps) > 8:
+            errs.append(f"{loc} 有 {len(steps)} 节，超过 8 节，应拆成两章")
         for ii, sp in enumerate(steps):
             total_pages += 1
             p = f"{loc} 第 {ii+1} 节「{sp.get('title','?')}」"
             if not sp.get("title"):
                 errs.append(f"{p} 缺 title")
+            elif len(sp["title"]) > 40:
+                errs.append(f"{p} 标题 {len(sp['title'])} 字，超过 40")
 
             keys = sp.get("sources") or []
             if not keys:
@@ -146,11 +164,36 @@ def manual_check(data):
                 if t not in BLOCK_TYPES:
                     errs.append(f"{p} 未知块类型 {t!r}，渲染时会被静默丢弃")
                     continue
-                # 各块的必填字段：缺了会渲染成空，必须在这里拦住
+                # 顶层必填：缺了整块渲染成空
                 for fld in BLOCK_REQUIRED.get(t, ()):
                     if not b.get(fld):
                         errs.append(f"{p} 的 {t} 块缺 {fld}，渲染时会被静默丢弃")
-                if t == "table":
+
+                # 嵌套字段：缺了会渲染出 "undefined"，比整块丢失更难看
+                if t in ("ul", "ol"):
+                    items = b.get("items") or []
+                    if len(items) < 2:
+                        errs.append(f"{p} 的 {t} 只有 {len(items)} 项，列表至少要 2 项")
+                    if len(items) > 12:
+                        errs.append(f"{p} 的 {t} 有 {len(items)} 项，超过 12")
+                elif t == "kv":
+                    for it in b.get("items") or []:
+                        if not isinstance(it, list) or len(it) != 2:
+                            errs.append(f"{p} 的 kv 每行必须是 [键, 值] 两个元素，实际 {it!r}")
+                            break
+                elif t == "split":
+                    for it in b.get("items") or []:
+                        if not isinstance(it, dict) or not it.get("h") or not it.get("p"):
+                            errs.append(f"{p} 的 split 每栏必须有 h 和 p，实际缺 "
+                                        f"{'h' if not (it or {}).get('h') else 'p'}")
+                            break
+                elif t == "opts":
+                    for it in b.get("items") or []:
+                        if not isinstance(it, dict) or not it.get("title"):
+                            errs.append(f"{p} 的 opts 每个选项必须有 title，"
+                                        f"否则渲染成 undefined")
+                            break
+                elif t == "table":
                     head = b.get("head") or []
                     rows = b.get("rows") or []
                     for r in rows:
@@ -166,6 +209,9 @@ def manual_check(data):
             errs.append("参考条目缺 key")
         if not r.get("short"):
             errs.append(f"参考条目缺 short: {r.get('key','?')}")
+        for f, hi in (("key", 60), ("short", 60), ("cat", 12)):
+            if len(str(r.get(f) or "")) > hi:
+                errs.append(f"参考条目 {r.get('key','?')} 的 {f} 超过 {hi} 字")
 
     return errs, total_pages
 
