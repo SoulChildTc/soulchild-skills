@@ -248,7 +248,10 @@ description: >
 理由写不出来，说明还没想清楚，回第一步。
 
 项目太简单凑不出 2 关时，合并成 1 关，页面就叫「全貌」。
-参考条目 < 8 条时，**不要出读本**，出一屏速览。
+
+**能力项（`coverage.total`）< 8 条时不要出读本**，出一屏速览。
+这个数字是「命令 + 参数 + 配置 + 环境变量」的总和，不是 `reference` 的条数 ——
+一个只有 5 个参数的工具，可以没有任何参考条目，照样出读本。
 
 ## 第四步：建概念台账
 
@@ -361,16 +364,18 @@ description: >
 
 **你只写 `content.json`，渲染交给 `scripts/build.py`。不要手写 HTML，不要改样式。**
 
-**命令里的 `<skill>` 换成这个 skill 的实际路径。** 内容文件用绝对路径或相对当前目录
-的路径都行，产物生成在内容文件同目录的 `index.html`。
+`$SKILL` 是这个 skill 的目录，`$DIR` 是你放 `content.json` 的工作目录。
+两个都换成你机器上的真实路径 —— 别原样粘贴 `~/path/to/...`。
+产物生成在 `content.json` 同目录的 `index.html`。
 
 ```bash
-SKILL=~/.agents/skills/learning-engine      # 换成本机实际路径
+SKILL=~/path/to/learning-engine          # 换成本机实际路径
+DIR=~/my-book                            # 你的工作目录，放 content.json
 
-python3 $SKILL/scripts/book.py check <内容>/content.json        # 结构 + 文风 + 顺序
-python3 $SKILL/scripts/book.py build <内容>/content.json        # 校验通过才生成
-python3 $SKILL/scripts/book.py all   <内容>/content.json --theme longread
-python3 $SKILL/scripts/book.py all   <内容>/content.json --coverage <内容>/coverage.json
+python3 $SKILL/scripts/book.py check $DIR/content.json              # 结构 + 文风 + 顺序
+python3 $SKILL/scripts/book.py build $DIR/content.json              # 校验通过才生成
+python3 $SKILL/scripts/book.py all   $DIR/content.json --theme longread
+python3 $SKILL/scripts/book.py all   $DIR/content.json --coverage $DIR/coverage.json
 ```
 
 只有一个入口。`check` 失败即停，不用自己判断先修哪个。
@@ -461,6 +466,10 @@ python3 $SKILL/scripts/book.py all   <内容>/content.json --coverage <内容>/c
 **只有这十一种，写错类型名或漏必填字段，`check` 会直接拒绝**——
 因为引擎认不出就静默输出空字符串，页面看着正常，实际整段丢了。
 
+校验分两层：顶层字段（类型名、text、items 这些）一定拦；嵌套细节
+（`split` 每栏最多 4 个、`kv` 只能两列、`lang` 枚举、字段长度上限）
+在装了 `jsonschema` 的机器上拦得更严，没装时靠下面这张表自己守。
+
 | type | 必填 | 可选 | 什么时候用 |
 |---|---|---|---|
 | `p` | text | — | 正文段落 |
@@ -470,9 +479,9 @@ python3 $SKILL/scripts/book.py all   <内容>/content.json --coverage <内容>/c
 | `warn` | text | label | 警告旁注 |
 | `code` | code | lang | 代码块 |
 | `table` | head, rows | — | 并列对比。有先后顺序用 ol |
-| `kv` | items | — | 键值对，适合参数说明 |
-| `split` | items | — | 2–4 个概念对比 |
-| `opts` | items | unit | 多个可选方案；每项支持 title/desc/code/lang/note/pick/tag |
+| `kv` | items | — | 键值对，**每行严格两列** `[键, 值]`；三列改用 `table` |
+| `split` | items | — | 2–4 个概念对比，每项必须有 `h` 和 `p` |
+| `opts` | items | unit | 2–6 个可选方案；每项必须有 `title`，可选 desc/code/lang/note/pick/tag |
 
 正文里 `{{1}}` 渲染成角标，对应本页 `sources` 数组第 1 条。
 
@@ -540,7 +549,7 @@ python3 $SKILL/scripts/verify.py index.html --expect content.json     # 产物�
 | 项 | 要求 |
 |---|---|
 | 文件 | **一个 `index.html`**，双击能开，无网络依赖 |
-| 大小 | 参考值：10 章约 120 KB，20 章 / 500 条参考约 400 KB。低于 40 KB 多半是内容太薄；超过 800 KB 说明有冗余 |
+| 大小 | 参考值：模板底噪约 55 KB。10 章约 120 KB，20 章 / 500 条参考约 400 KB。超过 800 KB 说明有冗余 |
 | 内容 | `DATA` 填满：`slug`、`project`、`version`、`stages`、`reference` |
 | 覆盖度 | `coverage.md` 里没有「既没写也没写原因」的项 |
 | 校验 | `book.py check`、`verify.py --expect` 都过；带 `--coverage` 跑一次，≥95% 才算交付 |
@@ -580,13 +589,14 @@ python3 $SKILL/scripts/verify.py index.html --expect content.json     # 产物�
 
 ## 脚本与参考
 
-全部在 `scripts/`，零依赖标准库。`book.py check|build|verify|all` 是统一入口，
-它会按顺序调 `build.py` / `lint.py` / `order.py`：
+全部在 `scripts/`，零依赖标准库。`book.py check|build|verify|all` 是统一入口。
 
-- **`build.py` 是硬闸门**，结构错（字段缺、类型错、角标越界）就停
-- `lint.py` / `order.py` 报「!」是建议，不阻断。它们的判断带主观性，
-  卡死会逼你为了过检查去改内容 —— 那比不改更糟。**但建议要看**，
-  尤其是「声称三种实际四条」这种硬伤，`lint.py` 会算作 error。
+`check` 依次调 `build.py` → `lint.py` → `order.py`；`build` / `all` 先跑 `check`，
+再生成，再由 `verify.py` 做产物校验。
+
+- **`build.py` 和 `lint.py` 的硬伤会拦**：结构错、标题数字对不上，直接停
+- **`order.py` 只提醒**：前向引用靠正则抓术语，会误报。卡死会逼你改标题去糊弄检查，
+  那比不改更糟 —— 但看到提醒要确认「读者在这页能不能理解」
 
 | 参考文件 | 什么时候读 |
 |---|---|

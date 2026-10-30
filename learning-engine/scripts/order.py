@@ -183,14 +183,17 @@ def check(data):
         if def_i is not None and def_i > use_i:
             forward.append((t, pages[use_i]["loc"], pages[def_i]["loc"]))
 
-    # 按首次使用位置排序，只报前 10 个
+    # 按首次使用位置排序，只报前 10 个。
+    #
+    # 这是**建议**不是硬伤：术语抽取靠正则，抓到的可能只是一个名字，
+    # 而不是真的「需要理解才能读下去」的概念。卡死会逼人改标题去糊弄检查。
     forward.sort(key=lambda x: x[1])
     for t, use_loc, def_loc in forward[:10]:
-        errors.append(
-            f"{use_loc} 用了「{t}」，但 {def_loc} 才讲它 — 读到这页会卡住"
+        warns.append(
+            f"{use_loc} 用了「{t}」，但 {def_loc} 才讲它 — 确认一下读者能不能理解"
         )
     if len(forward) > 10:
-        errors.append(f"... 还有 {len(forward)-10} 处前向引用")
+        warns.append(f"... 还有 {len(forward)-10} 处前向引用")
 
     # ── 3. 概念跳跃：单页新术语太多 ──
     seen = set()

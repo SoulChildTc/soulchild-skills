@@ -21,13 +21,20 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 USAGE = """\
 用法：
-    python3 book.py check  content.json              结构 + 文风 + 顺序
+    python3 book.py check  content.json [--coverage coverage.json]
     python3 book.py build  content.json [-o out.html] [--theme paper|longread]
     python3 book.py verify index.html [--expect content.json] [--coverage coverage.json]
     python3 book.py all    content.json [--theme paper|longread] [--coverage coverage.json]
 
 退出码：0 全过，1 有问题
 """
+
+
+def check_coverage_quick(path):
+    """直接调 verify.py 的 check_coverage，规则只在那一处维护。"""
+    sys.path.insert(0, HERE)
+    from verify import check_coverage
+    return check_coverage(path)
 
 
 def run(script, args, label, strict=False):
@@ -48,7 +55,21 @@ def run(script, args, label, strict=False):
     return r.returncode == 0
 
 
-def cmd_check(path):
+def cmd_check(path, coverage=None):
+    """结构 + 文风 + 顺序。带了 --coverage 就顺带查覆盖度自洽。"""
+    if coverage:
+        level, msg = check_coverage_quick(coverage)
+        print(f"\n{'─' * 60}")
+        print("  覆盖度")
+        print(f"{'─' * 60}")
+        if level == "error":
+            print(f"✗ {msg}")
+            return False
+        if level == "warn":
+            print(f"! {msg}")
+        else:
+            print("✅ 覆盖度达标")
+
     # 只有 build.py 是硬闸门（结构错了渲染就是坏的）。
     # lint / order 输出的「!」是建议，不阻断 —— 它们的判断带主观性，
     # 卡死会让 agent 为了过检查去改内容。
@@ -138,7 +159,12 @@ def main():
             theme = rest[i + 1]
 
     if action == "check":
-        sys.exit(0 if cmd_check(path) else 1)
+        coverage = None
+        if "--coverage" in rest:
+            i = rest.index("--coverage")
+            if i + 1 < len(rest):
+                coverage = rest[i + 1]
+        sys.exit(0 if cmd_check(path, coverage) else 1)
 
     if action == "build":
         out = None

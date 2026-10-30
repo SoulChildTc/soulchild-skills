@@ -159,12 +159,22 @@ def check_coverage(path):
     if err:
         return "error", f"覆盖度文件读不了：{err}"
 
-    total = d.get("total") or 0
-    written = d.get("written") or 0
+    if not isinstance(d, dict):
+        return "error", "coverage.json 顶层必须是对象 {\"total\":N,\"written\":N,\"skipped\":[]}"
+
+    total = d.get("total")
+    written = d.get("written")
+    for name, v in (("total", total), ("written", written)):
+        if not isinstance(v, int) or isinstance(v, bool):
+            return "error", f"coverage.{name} 必须是整数，实际 {type(v).__name__}={v!r}"
     if total <= 0:
         return "error", "coverage.total 必须大于 0"
 
     skipped = d.get("skipped") or []
+    if not isinstance(skipped, list):
+        return "error", "coverage.skipped 必须是数组"
+    if any(not isinstance(x, dict) for x in skipped):
+        return "error", "coverage.skipped 的每一项都必须是对象 {item, reason}"
     no_reason = [s for s in skipped if not s.get("reason")]
     if no_reason:
         return "error", f"{len(no_reason)} 个跳过项没写原因"
