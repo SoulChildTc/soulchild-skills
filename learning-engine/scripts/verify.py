@@ -149,27 +149,32 @@ def check_roundtrip(html, content_path):
 
 
 def check_coverage(path):
-    """可选：覆盖度文件。"""
+    """可选：覆盖度文件。
+
+    返回 (level, message)：level 是 error / warn / None。
+    分轮写的时候中间轮次必然到不了 95%，所以 80–95% 只提醒、不拦。
+    拦不拦由调用方决定 —— 最终交付要 ≥95%，中间轮次看提醒就够。
+    """
     d, err = load(path)
     if err:
-        return f"覆盖度文件读不了：{err}"
+        return "error", f"覆盖度文件读不了：{err}"
 
     total = d.get("total") or 0
     written = d.get("written") or 0
     if total <= 0:
-        return "coverage.total 必须大于 0"
+        return "error", "coverage.total 必须大于 0"
 
     skipped = d.get("skipped") or []
     no_reason = [s for s in skipped if not s.get("reason")]
     if no_reason:
-        return f"{len(no_reason)} 个跳过项没写原因"
+        return "error", f"{len(no_reason)} 个跳过项没写原因"
 
     pct = written / total * 100
     if pct < 80:
-        return f"覆盖度 {pct:.1f}% < 80%，不合格"
+        return "error", f"覆盖度 {pct:.1f}% < 80%，不合格"
     if pct < 95:
-        return f"覆盖度 {pct:.1f}%，需在 intro 说明没覆盖什么"
-    return None
+        return "warn", f"覆盖度 {pct:.1f}%，需在 intro 说明没覆盖什么"
+    return None, None
 
 
 def main():
@@ -204,9 +209,11 @@ def main():
     if "--coverage" in sys.argv:
         i = sys.argv.index("--coverage")
         if i + 1 < len(sys.argv):
-            cov_msg = check_coverage(sys.argv[i + 1])
-            if cov_msg:
+            level, cov_msg = check_coverage(sys.argv[i + 1])
+            if level == "error":
                 errors.append(cov_msg)
+            elif level == "warn":
+                warns.append(cov_msg)
 
     # 统计
     raw = extract_payload(html)

@@ -229,82 +229,42 @@ FastAPI 就是例子：主体是库，但 `fastapi/cli.py` 转发 `fastapi-cli`�
 
 ---
 
-## 层次决定顺序，不决定写不写
+## 层次写多细
 
-自足要求所有层次都写。层次只影响**排在哪、写多细**。
+层次的划分见 SKILL.md 第一步。这里只补「每层落到什么颗粒度」：
 
-| 层 | 写多细 | 位置 |
-|---|---|---|
-| L1 用 | 每步都能照做，有可跑例子 | 前面 |
-| L2 懂 | 讲清机制和取舍，不逐行 | 中间 |
-| L3 改 | 扩展点 + 源码地图 + 改动示例 | 后面 |
-| L4 选 | 边界、对比、天花板 | 最后 |
+| 层 | 写多细 |
+|---|---|
+| L1 用 | 每步都能照做，有可跑例子 |
+| L2 懂 | 讲清机制和取舍，不逐行 |
+| L3 改 | 扩展点 + 源码地图 + 改动示例 |
+| L4 选 | 边界、对比、天花板 |
 
-**不存在「上手场景不读原理」这种豁免。** 原理只是往后放。
-唯一可以不写的是「需要特定硬件才能验证」和「已废弃」这两类，且必须写进 `coverage.skipped`。
+## 清点
 
-反例（真实踩过）：为了讲清 ripgrep 参数，agent 主动决定「104 个旗标只取 30 个」。
-按自足标准这是缺陷——104 个都该进参考栏，只是分组呈现、正文只展开高频的。
+**各语言的清点命令只在 `references/coverage.md` 里维护一份**，避免两处数字不一致。
+这里只补 coverage.md 没覆盖的语言：
 
-## 穷尽清点：先列全，再挑
-
-自足的前提是**知道总共有多少**。清点这一步不能省。
-
-### CLI
+### TypeScript / Go / Rust 的公开面
 
 ```bash
-TOOL=your-tool
-
-# 1. 所有子命令
-$TOOL --help | grep -E "^\s+[a-z][a-z-]+" | awk '{print $1}'
-
-# 2. 每个命令的参数（逐个跑，全部保存）
-$TOOL --help > /tmp/help-root.txt
-for c in $($TOOL --help | grep -E "^\s+[a-z][a-z-]+" | awk '{print $1}'); do
-  $TOOL "$c" --help > "/tmp/help-$c.txt" 2>/dev/null
-done
-
-# 3. 数总数
-cat /tmp/help-*.txt | grep -cE "^\s+(-|--)"
-```
-
-把这些数字记进 `coverage.json` 的 `total`。
-
-### 库 / SDK
-
-```bash
-# Python：导出面
-python3 -c "import pkg; print(len(dir(pkg)))"
-grep -c "def " pkg/__init__.py
-
-# TypeScript
+# TypeScript：导出符号数
 grep -c "^export " index.d.ts
 
-# Go
-grep -c "^func " *.go
-```
+# Go：可导出的函数和方法
+grep -cE "^func (\([^)]*\) )?[A-Z]" *.go
 
-### 配置项
-
-```bash
-# pydantic settings
-grep -E "^\s+[a-z_]+:" config.py | wc -l
-# JSON schema
-python3 -c "import json;print(len(json.load(open('schema.json'))['properties']))"
-```
-
-### 环境变量
-
-```bash
-grep -rhoE "environ\.get\(['\"][A-Z_]+|getenv\(['\"][A-Z_]+" --include="*.py" | \
-  grep -oE "[A-Z_]{3,}" | sort -u | wc -l
+# Rust：pub 项
+grep -cE "^\s*pub (fn|struct|enum|trait|const)" src/lib.rs
 ```
 
 ### 清点结果的用法
 
+
+
 1. 存成 `coverage.md`，每项一行，标 ✅ / 📝 / ❌
 2. 数出 `total` 和 `written`，写进 `coverage.json`
-3. 跑 `scripts/verify.py --coverage coverage.json`
+3. 跑 `python3 scripts/verify.py index.html --coverage coverage.json`
 4. 覆盖度 < 95% 就继续写，不要交付
 
 **注意**：`total` 要算「能力项」，不是「帮助文本行数」。

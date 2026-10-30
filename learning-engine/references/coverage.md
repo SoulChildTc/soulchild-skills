@@ -145,31 +145,7 @@ python3 scripts/verify.py output.html --coverage coverage.json
 
 ---
 
-## 五、分轮写的时候
-
-内容多一次写不完，可以分几轮。**但产出永远是同一个 `index.html`。**
-
-`coverage.json` 只在需要统计进度时用，不参与分文件：
-
-```json
-{
-  "total": 104,
-  "written": 45,
-  "skipped": [
-    {"item": "--engine", "reason": "需要特定硬件"}
-  ]
-}
-```
-
-**每轮结束时更新 `written`，重新 build 一次。** 读者拿到的永远是当前最新的一本书。
-
-覆盖度 < 95% 时，在 intro 里写清还缺什么：
-
-> 本版覆盖 6 章 26 节。镜像构建、Compose 编排、daemon 配置三块还没写。
-
-不要说「这是第一册」——读者不知道也不关心有几个册。
-
-## 六、常见错误
+## 五、常见错误
 
 | 错误 | 为什么错 | 改法 |
 |---|---|---|
@@ -183,13 +159,7 @@ python3 scripts/verify.py output.html --coverage coverage.json
 
 ## 分轮写
 
-内容多的时候分几轮写，但**只有一个 `content.json`，只有一个 `index.html`**。
-
-| 轮次 | 你做什么 | `content.json` |
-|---|---|---|
-| **第 1 轮** | 清点 + 写前 3–5 章 | 3–5 章 |
-| **第 2 轮** | 追加中间几章 | 8–10 章 |
-| **第 3 轮** | 追加剩余 | 全部 |
+轮次的划分见 SKILL.md「分轮写，但只有一本书」。这里只讲每轮内部怎么做。
 
 ### 每轮开始前必做
 

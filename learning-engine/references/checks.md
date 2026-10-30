@@ -96,41 +96,61 @@ done < /tmp/urls.txt
 
 ---
 
-## 三、渲染校验
+### 渲染校验
 
-用无头浏览器逐页打开，检查不报错、不空白、不溢出：
+用无头浏览器逐页验：不报错、不空白、不横向溢出。
 
 ```bash
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+[[ -x "$CHROME" ]] || CHROME="$HOME/Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell"
 
-# 逐页渲染
 python3 - <<'PY'
 html = open("index.html").read()
 probe = """
 <script>
-const E=[];window.onerror=(m,u,l)=>E.push(m+'@'+l);
-const R=[];
-for(let s=0;s<STAGES.length;s++)for(let i=0;i<STAGES[s].steps.length;i++){
-  try{ go(s,i); }catch(e){ R.push(s+':'+i+' '+e.message); }
-  const a=document.getElementById('art');
-  if(!a.querySelector('h2')) R.push(s+':'+i+' 无标题');
-  if([...a.children].some(c=>getComputedStyle(c).opacity==='0')) R.push(s+':'+i+' 不可见');
-  if(document.getElementById('read').scrollWidth > document.getElementById('read').clientWidth+2) R.push(s+':'+i+' 横向溢出');
+const E=[];
+window.onerror=(m,u,l)=>E.push(m+'@'+l);
+const bad=[];
+const vis = el => [...el.querySelectorAll('*')].filter(n=>getComputedStyle(n).opacity==='0').length;
+
+function check(label, root, scroller){
+  if(!root) { bad.push(label+' 容器不存在'); return; }
+  if(!root.querySelector('h1,h2,h3')) bad.push(label+' 无标题');
+  if(vis(root) > 0) bad.push(label+' 有 '+vis(root)+' 个不可见节点');
+  if(scroller && scroller.scrollWidth > scroller.clientWidth + 2)
+    bad.push(label+' 横向溢出 '+scroller.scrollWidth+'>'+scroller.clientWidth);
 }
+
+// paper：有 SCREENS，逐屏翻过去
+if(typeof SCREENS !== 'undefined' && typeof goScreen === 'function'){
+  for(let n=0;n<SCREENS.length;n++){
+    try{ goScreen(n); }catch(e){ bad.push('screen '+n+' 报错 '+e.message); continue; }
+    check('screen '+n, document.getElementById('screenPage'), document.getElementById('main'));
+  }
+}
+// longread：整本已渲染，逐节验
+else{
+  const steps=[...document.querySelectorAll('.step')];
+  if(!steps.length) bad.push('找不到任何 .step');
+  steps.forEach((s,i)=>check('step '+i, s, document.documentElement));
+}
+
 const d=document.createElement('div');
+d.id='__probe';
 d.style.cssText='position:fixed;left:0;top:0;z-index:99999;background:#0f0;color:#000;font:12px monospace;padding:8px;white-space:pre-wrap';
-d.textContent='err='+E.length+' bad='+R.length+'\\n'+R.join('\\n');
+d.textContent='err='+E.length+' bad='+bad.length+'\\n'+bad.slice(0,12).join('\\n');
 document.body.appendChild(d);
 </script>
 """
 open("/tmp/probe.html","w").write(html.replace("</body>", probe+"</body>"))
 PY
 
-"$CHROME" --headless=new --disable-gpu --virtual-time-budget=6000 \
-  --screenshot=/tmp/probe.png --window-size=1200,400 file:///tmp/probe.html
+"$CHROME" --headless --disable-gpu --virtual-time-budget=6000 \
+  --screenshot=/tmp/probe.png --window-size=1200,500 file:///tmp/probe.html
 ```
 
-看截图：`err=0 bad=0` 才算过。
+看截图左上角的绿框：**`err=0 bad=0` 才算过。**
+两套模板通用：有 `SCREENS` 就逐屏翻，没有就逐节验。
 
 ---
 
