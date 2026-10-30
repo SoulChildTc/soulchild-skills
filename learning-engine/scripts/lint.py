@@ -144,6 +144,9 @@ def run(rules, data):
                 for b in sp.get("blocks") or []:
                     if b.get("type") in ("opts", "ul", "ol"):
                         actual = max(actual, len(b.get("items") or []))
+                    elif b.get("type") == "table":
+                        # 表格的「行」也是条目：「三种命令」配三行表格
+                        actual = max(actual, len(b.get("rows") or []))
                 if actual and claimed != actual:
                     errors.append(
                         f"{si+1}-{ii+1}「{sp['title']}」声称 {claimed}，实际 {actual}"

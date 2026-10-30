@@ -200,7 +200,7 @@ description: >
 最低要求：
 
 - 每项标 ✅ / 📝 / ❌，`❌` 必须写原因
-- **最终交付**覆盖度 ≥ 95%
+- **最终交付**覆盖度 ≥ 95%（机器只在 < 80% 时硬拦，80–95% 出提醒 —— 提醒就得处理，别当没看见）
 - **参数表只能从签名长出来。** 手写参数表是错误来源第一位
 
 反例（真实踩过）：为了讲清 ripgrep 参数，agent 主动决定「旗标只取 30 个」。
@@ -252,7 +252,10 @@ description: >
 
 ## 第四步：建概念台账
 
-**🔴 CHECKPOINT · 台账没建完，不许动笔写正文**
+**🔴 CHECKPOINT · 台账没排好，不许动笔写正文**
+
+规模小的项目（≤2 章）可以只在脑子里过一遍，但**「这个概念在哪页第一次讲」
+必须先有答案**。台账的载体可以是表，也可以是 intro 里一句话。
 
 这是防止「前面看不懂后面」的唯一可靠办法。
 
@@ -298,13 +301,13 @@ description: >
 
 写进 `content.json` 同目录的 `concepts.md`，人可读。
 
-**小项目可以只列一半。** 判据是「读者会不会卡住」：
+**载体按规模变，判断标准不变：每个概念都得有明确的引入位置。**
 
 | 项目规模 | 台账怎么做 |
 |---|---|
-| 2 章以内、术语 < 10 个 | 只在脑子里过一遍，写进 intro 的「概念顺序」一句就行 |
-| 3–8 章 | 列完整表 |
-| 9 章以上 | 列完整表，且分章维护 |
+| ≤ 2 章、术语 < 10 个 | 不写文件。在 intro 里用一句话交代概念顺序即可 |
+| 3–8 章 | 写 `concepts.md`，完整四列表 |
+| 9 章以上 | 写 `concepts.md`，且按章分组维护 |
 
 台账的作用是让你自己看清顺序，不是交付物。它不进 `content.json`，
 也没有脚本检查——所以别为了它写一堆用不上的行。
@@ -540,7 +543,7 @@ python3 $SKILL/scripts/verify.py index.html --expect content.json     # 产物�
 | 大小 | 参考值：10 章约 120 KB，20 章 / 500 条参考约 400 KB。低于 40 KB 多半是内容太薄；超过 800 KB 说明有冗余 |
 | 内容 | `DATA` 填满：`slug`、`project`、`version`、`stages`、`reference` |
 | 覆盖度 | `coverage.md` 里没有「既没写也没写原因」的项 |
-| 校验 | `book.py check` 和 `verify.py --expect` 双过；覆盖度 ≥ 95% |
+| 校验 | `book.py check`、`verify.py --expect` 都过；带 `--coverage` 跑一次，≥95% 才算交付 |
 | 交互 | `⌘K` 开参数速查；进度和字号存 `localStorage`，key 含 `slug` |
 
 **不确定时的默认动作**（不要停下来等回答）：
@@ -578,7 +581,12 @@ python3 $SKILL/scripts/verify.py index.html --expect content.json     # 产物�
 ## 脚本与参考
 
 全部在 `scripts/`，零依赖标准库。`book.py check|build|verify|all` 是统一入口，
-它会按顺序调 `build.py` / `lint.py` / `order.py`，任一失败即停。
+它会按顺序调 `build.py` / `lint.py` / `order.py`：
+
+- **`build.py` 是硬闸门**，结构错（字段缺、类型错、角标越界）就停
+- `lint.py` / `order.py` 报「!」是建议，不阻断。它们的判断带主观性，
+  卡死会逼你为了过检查去改内容 —— 那比不改更糟。**但建议要看**，
+  尤其是「声称三种实际四条」这种硬伤，`lint.py` 会算作 error。
 
 | 参考文件 | 什么时候读 |
 |---|---|
@@ -589,3 +597,6 @@ python3 $SKILL/scripts/verify.py index.html --expect content.json     # 产物�
 | `references/theme-choose.md` | 选 paper 还是 longread |
 | `references/theme-paper.md` | paper 的样式和交互（改模板时才读） |
 | `references/theme-longread.md` | longread 的样式和交互（改模板时才读） |
+
+`test-prompts.json` 是这个 skill 自己的回归用例（三条典型请求 + 期望产出）。
+改了 `SKILL.md` 或模板之后，拿它跑一遍，看流程还走不走得通。

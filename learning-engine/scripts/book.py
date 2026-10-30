@@ -49,10 +49,13 @@ def run(script, args, label, strict=False):
 
 
 def cmd_check(path):
+    # 只有 build.py 是硬闸门（结构错了渲染就是坏的）。
+    # lint / order 输出的「!」是建议，不阻断 —— 它们的判断带主观性，
+    # 卡死会让 agent 为了过检查去改内容。
     steps = [
-        ("build.py", [path, "--check"], "① 结构（字段、类型、角标、表格）"),
-        ("lint.py", [path], "② 文风（AI 腔、空话、加粗、来源结构）"),
-        ("order.py", [path], "③ 阅读顺序（前向引用、概念跳跃、章首章末）"),
+        ("build.py", [path, "--check"], "① 结构（字段、类型、角标、表格）｜硬闸门"),
+        ("lint.py", [path], "② 文风（AI 腔、空话、加粗、来源结构）｜建议"),
+        ("order.py", [path], "③ 阅读顺序（前向引用、概念跳跃、章首章末）｜建议"),
     ]
 
     for script, args, label in steps:

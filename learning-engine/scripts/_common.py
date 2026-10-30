@@ -86,13 +86,23 @@ CN_NUM = {"一":1,"二":2,"三":3,"四":4,"五":5,
 
 
 def claimed_count(title):
-    """从「三种方式」「四个问题」这类标题里取声称的数量。
+    """从「三种方式」「四个问题」「三种命令：a、b、c」这类标题里取声称的数量。
 
-    只认「：」之后的明确列举，避免把「一个告警」当计数。
+    只认「数量词 + 量词」，不要求在冒号后面 —— 中文标题里
+    「三种用法，选一个」和「命令清单：五个子命令」都常见。
     返回 None 表示标题里没有数量声明。
     """
-    m = re.match(r"^[^：:]*[：:]\s*([二三四五六七八九十]+)\s*[种个类条]", title or "")
-    return CN_NUM.get(m.group(1)) if m else None
+    t = title or ""
+    m = re.search(r"([二两三四五六七八九十]+)\s*[种个类条步层]份?", t)
+    if not m:
+        return None
+    # 「一个」多半是泛指（「一个告警」「一个问题」），不算计数声明。
+    # 「两个」是明确计数，保留。
+    if m.group(1) == "一":
+        return None
+    if m.group(1) == "两":
+        return 2
+    return CN_NUM.get(m.group(1))
 
 
 def iter_steps(data):

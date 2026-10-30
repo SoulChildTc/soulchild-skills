@@ -175,6 +175,18 @@ python3 $SKILL/scripts/verify.py index.html --coverage coverage.json
 | 80–95% | 通过但提醒 | intro 里列出没覆盖什么 |
 | < 80% | 不合格 | 继续写；写不完就分轮追加章节 |
 
+**中间轮次只看到提醒是正常的。** 第 1 轮写了 3 章，覆盖度 40% 不奇怪；
+闸门卡的是 80%，交付卡的是 95%。
+
+`coverage.json` 本身也要自洽，否则数字随便填就能过：
+
+| 检查 | 例子 |
+|---|---|
+| `written` 不能超过 `total` | `written:99, total:10` → 拒绝 |
+| `written + skipped 数` 不能超过 `total` | 96 + 5 > 100 → 拒绝 |
+| 每个 `skipped` 要有 `item` 和 `reason` | 只有 reason → 拒绝 |
+| `total` 不能低于 8 | `total:1, written:1` 等于没闸门 → 拒绝 |
+
 ---
 
 ## 五、常见错误

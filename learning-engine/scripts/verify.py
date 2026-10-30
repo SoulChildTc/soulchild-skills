@@ -168,6 +168,23 @@ def check_coverage(path):
     no_reason = [s for s in skipped if not s.get("reason")]
     if no_reason:
         return "error", f"{len(no_reason)} 个跳过项没写原因"
+    no_item = [s for s in skipped if not s.get("item")]
+    if no_item:
+        return "error", f"{len(no_item)} 个跳过项没写 item（哪些能力没覆盖）"
+
+    # 数字要自洽：写完的 + 跳过的不能超过总数
+    if written < 0:
+        return "error", "coverage.written 不能是负数"
+    if written > total:
+        return "error", f"coverage.written={written} 超过 total={total}，数字不自洽"
+    if written + len(skipped) > total:
+        return "error", (f"coverage 数字不自洽：written({written}) + "
+                         f"skipped({len(skipped)}) > total({total})")
+
+    # 总数太少说明没真的清点。8 条以下的项目不该出读本，该出单页速览。
+    if total < 8:
+        return "error", (f"coverage.total={total} 太少，说明没有真正清点。"
+                         f"能力项 < 8 的项目应该出单页速览，不出读本")
 
     pct = written / total * 100
     if pct < 80:

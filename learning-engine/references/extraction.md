@@ -29,7 +29,8 @@ grep -rn "@.*\.command(" --include="*.py"
 # 参数定义（含默认值、帮助、环境变量名）
 grep -rn "typer.Option\|typer.Argument" --include="*.py"
 # 共享选项通常单独一个文件
-ls **/cli_commons.py **/options.py **/common/*.py 2>/dev/null
+# 用 find 而不是 glob：zsh 遇到不匹配的 ** 会直接报错退出
+find . -name "cli_commons.py" -o -name "options.py" -o -path "*/common/*.py" 2>/dev/null
 ```
 
 读法：`typer.Option(default, "--flag", "-f", help="...", envvar="X")`
