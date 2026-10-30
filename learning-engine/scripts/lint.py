@@ -135,8 +135,11 @@ def run(rules, data):
     dom = rules.get("domain", {})
 
     if dom.get("check_title_count"):
-        # 「三种」指的是哪一种，靠标题里的量词判断，不能对全页块取最大值 ——
-        # 一页里既有「三种命令」的 opts 又有 5 行退出码表时，取最大值会误杀。
+        # 标题里的数字对不上，只能当**提醒**，不能当硬伤。
+        #
+        # 原因：「三种命令」可能指 3 个 code 块、3 个 opts、3 个 h3 小节，
+        # 甚至指 3 条 narratively 讲清楚的用法 —— 没法靠块类型可靠判定。
+        # 硬拦的结果是 agent 去改标题糊弄检查，那比不改更糟。
         for si, st in enumerate(data.get("stages") or []):
             for ii, sp in enumerate(st.get("steps") or []):
                 title = sp.get("title", "")
@@ -144,32 +147,23 @@ def run(rules, data):
                 if not claimed:
                     continue
 
-                # 「三种命令」既可能写成 3 个 opts，也可能写成 3 个 code 块
-                # 或 3 个 warn。所有「能数出条目」的块都进候选池，
-                # 只要有一个数量对得上就算说得通 —— 不能只认列表类。
-                multi = []   # 本身就含多条的块：取它自己的条数
-                singles = 0  # 单个 code / note / warn / h3：累计个数
-
+                # 只统计真正「列举出来」的块，单个 code / note / h3 不参与 ——
+                # 它们是叙述的一部分，不是条目。
+                counts = []
                 for b in sp.get("blocks") or []:
                     t = b.get("type")
                     if t in ("opts", "ul", "ol", "split", "kv"):
-                        multi.append(len(b.get("items") or []))
+                        counts.append(len(b.get("items") or []))
                     elif t == "table":
-                        multi.append(len(b.get("rows") or []))
-                    elif t in ("code", "note", "warn", "h3"):
-                        singles += 1
+                        counts.append(len(b.get("rows") or []))
+                if not counts:
+                    continue
+                if claimed in counts:
+                    continue
 
-                pool = list(multi)
-                if singles > 1:
-                    pool.append(singles)
-                if not pool:
-                    continue
-                # 只要有一种数法和标题声明一致，就算说得通
-                if claimed in pool:
-                    continue
-                errors.append(
-                    f"{si+1}-{ii+1}「{title}」声称 {claimed}，"
-                    f"实际条目数是 {sorted(set(pool))}"
+                warns.append(
+                    f"{si+1}-{ii+1}「{title}」标题写 {claimed}，"
+                    f"列举出来的块有 {sorted(set(counts))} 条 — 核对一下"
                 )
 
     if dom.get("check_source_kind_mix"):
