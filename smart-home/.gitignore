@@ -1,0 +1,14 @@
+# ── 运行时状态（设备清单 + 凭证，等同家庭控制权，绝不提交）──
+.state/
+
+# ── Python venv / 运行产物（早期遗留）──
+bin/
+/lib/
+pyvenv.cfg
+.lock
+CACHEDIR.TAG
+__pycache__/
+*.pyc
+
+# ── 临时/工具文件 ──
+.DS_Store

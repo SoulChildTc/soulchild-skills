@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>米家登录</title>
+<style>
+  :root {
+    --primary: #ff6900;
+    --primary-hover: #f55f00;
+    --primary-soft: #fff3ec;
+    --text: #1f2329;
+    --text-2: #5f6673;
+    --text-3: #9aa0ab;
+    --border: #e4e7ed;
+    --success: #21a179;
+    --success-soft: #e6f6f0;
+    --danger: #e5484d;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* 融入模态框：透明背景，无卡片包裹，内容居中自然铺开 */
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 24px; color: var(--text); }
+  .content { width: 100%; max-width: 320px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  #loginForm { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+  .qr-box { width: 220px; height: 220px; border-radius: 14px; border: 1px solid var(--border); background: #fafbfc; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .qr-box img { width: 200px; height: 200px; object-fit: contain; }
+  .qr-box .qr-hint { text-align: center; color: var(--text-3); font-size: 13px; padding: 0 20px; line-height: 1.8; }
+
+  .btn { padding: 11px 36px; border: none; border-radius: 10px; background: var(--primary); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .btn:hover { background: var(--primary-hover); }
+  .btn:disabled { background: #c0c4cc; cursor: not-allowed; }
+
+  .link { color: var(--primary); font-size: 13px; text-decoration: none; }
+  .link:hover { text-decoration: underline; }
+
+  .status { font-size: 13px; min-height: 20px; text-align: center; }
+  .status.ok { color: var(--success); }
+  .status.err { color: var(--danger); }
+  .status.wait { color: var(--text-2); }
+
+  .tip { font-size: 12px; color: var(--text-3); text-align: center; line-height: 1.6; }
+
+  /* 已配置视图（整页居中，与成功视图同风格） */
+  .configured-view { display: none; flex-direction: column; align-items: center; gap: 14px; padding: 24px 8px; }
+  .configured-view .check { width: 60px; height: 60px; border-radius: 50%; background: var(--success); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(33, 161, 121, .3); }
+  .configured-view .check svg { width: 30px; height: 30px; fill: #fff; }
+  .configured-view .msg { font-size: 17px; font-weight: 700; }
+  .configured-view .sub { font-size: 13px; color: var(--text-3); }
+  .configured-view .relogin { margin-top: 8px; padding: 11px 36px; border: 1px solid var(--primary); border-radius: 10px; background: #fff; color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .configured-view .relogin:hover { background: var(--primary-soft); }
+
+  /* 登录成功视图 */
+  .success-view { display: none; flex-direction: column; align-items: center; gap: 14px; padding: 16px 8px; }
+  .success-view .check { width: 60px; height: 60px; border-radius: 50%; background: var(--success); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(33, 161, 121, .3); }
+  .success-view .check svg { width: 30px; height: 30px; fill: #fff; }
+  .success-view .msg { font-size: 17px; font-weight: 700; }
+  .success-view .sub { font-size: 13px; color: var(--text-3); }
+</style>
+</head>
+<body>
+  <!-- 登录成功视图 -->
+  <div class="success-view" id="successView">
+    <div class="check">
+      <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+    </div>
+    <div class="msg">米家登录成功</div>
+    <div class="sub">点击右上角关闭</div>
+  </div>
+
+  <!-- 已配置视图 -->
+  <div class="configured-view" id="configuredView">
+    <div class="check">
+      <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+    </div>
+    <div class="msg">当前已配置</div>
+    <div class="sub">如需更换账号，可重新登录</div>
+    <button class="relogin" id="reloginBtn">重新登录</button>
+  </div>
+
+  <!-- 登录操作视图 -->
+  <div class="content" id="loginContent">
+    <div id="loginForm">
+      <div class="qr-box" id="qrBox">
+        <div class="qr-hint">点击下方按钮<br>获取登录二维码</div>
+      </div>
+
+      <button class="btn" id="getBtn">获取二维码</button>
+
+      <a class="link" id="loginLink" style="display:none" href="#" target="_blank" rel="noreferrer">手机扫码不方便？点这里在浏览器登录</a>
+
+      <div class="status" id="status"></div>
+      <div class="tip" id="tip">二维码每 5 分钟刷新一次，超时请重新获取</div>
+    </div>
+  </div>
+
+<script>
+const successView = document.getElementById('successView');
+const loginContent = document.getElementById('loginContent');
+const loginForm = document.getElementById('loginForm');
+const qrBox = document.getElementById('qrBox');
+const getBtn = document.getElementById('getBtn');
+const loginLink = document.getElementById('loginLink');
+const statusEl = document.getElementById('status');
+const configuredView = document.getElementById('configuredView');
+const reloginBtn = document.getElementById('reloginBtn');
+let polling = false;
+
+// 已配置时显示整页"当前已配置"，隐藏登录表单
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/platforms/xiaomi/config');
+    const data = await res.json();
+    if (data.configured) {
+      loginContent.style.display = 'none';
+      configuredView.style.display = 'flex';
+    }
+  } catch { /* 忽略 */ }
+}
+
+// "重新登录" → 显示登录表单，并自动获取二维码
+reloginBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  configuredView.style.display = 'none';
+  loginContent.style.display = 'flex';
+  startLogin();
+});
+
+function setStatus(msg, cls) {
+  statusEl.textContent = msg || '';
+  statusEl.className = 'status' + (cls ? ' ' + cls : '');
+}
+
+function showSuccess() {
+  loginContent.style.display = 'none';
+  successView.style.display = 'flex';
+}
+
+async function startLogin() {
+  try {
+    getBtn.disabled = true;
+    setStatus('正在获取二维码…', 'wait');
+    const res = await fetch('/api/xiaomi/qr');
+    if (!res.ok) throw new Error((await res.json()).error || '获取失败');
+    const data = await res.json();
+    qrBox.innerHTML = `<img src="${data.qrUrl}" alt="二维码">`;
+    loginLink.style.display = 'inline';
+    loginLink.href = data.loginUrl;
+    setStatus('请用手机米家 App 扫码', 'wait');
+    startPolling();
+  } catch (e) {
+    setStatus('出错了：' + e.message, 'err');
+    getBtn.disabled = false;
+  }
+}
+
+getBtn.addEventListener('click', startLogin);
+
+async function startPolling() {
+  if (polling) return;
+  polling = true;
+  const timer = setInterval(async () => {
+    try {
+      const res = await fetch('/api/xiaomi/status');
+      const data = await res.json();
+      if (data.status === 'confirmed') {
+        clearInterval(timer);
+        polling = false;
+        await finalize();
+      }
+    } catch { /* 继续轮询 */ }
+  }, 1500);
+}
+
+async function finalize() {
+  try {
+    setStatus('登录已确认，正在保存…', 'wait');
+    const res = await fetch('/api/xiaomi/finalize', { method: 'POST' });
+    if (!res.ok) throw new Error((await res.json()).error || '保存失败');
+    showSuccess();
+  } catch (e) {
+    setStatus('出错了：' + e.message, 'err');
+    getBtn.disabled = false;
+  }
+}
+
+loadConfig();
+
+// ── 上报内容高度给父框架（模态框自适应）──
+function reportHeight() {
+  parent.postMessage({ type: 'smart-home-resize', height: document.documentElement.scrollHeight }, '*');
+}
+window.addEventListener('load', reportHeight);
+if (window.ResizeObserver) {
+  new ResizeObserver(reportHeight).observe(document.body);
+}
+</script>
+</body>
+</html>

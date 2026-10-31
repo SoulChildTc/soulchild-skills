@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grove Smart Home 配置</title>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --panel: #ffffff;
+    --border: #e4e7ed;
+    --text: #1f2329;
+    --text-2: #5f6673;
+    --text-3: #9aa0ab;
+    --primary: #4f6ef7;
+    --primary-hover: #3d5cf0;
+    --primary-soft: #eef1fe;
+    --success: #21a179;
+    --success-soft: #e6f6f0;
+    --radius: 14px;
+    --shadow-lg: 0 24px 64px rgba(16, 24, 40, .18);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; min-height: 100vh; background: linear-gradient(135deg, #eef0f6 0%, #f6f7fb 100%); color: var(--text); display: flex; align-items: center; justify-content: center; padding: 24px; }
+
+  .card { width: 560px; max-width: 100%; background: var(--panel); border-radius: 20px; box-shadow: var(--shadow-lg); overflow: hidden; }
+
+  /* 卡片头 */
+  .card-header { padding: 24px 28px 16px; display: flex; align-items: center; gap: 14px; }
+  .card-header .logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #4f6ef7, #8a5cf7); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; flex-shrink: 0; }
+  .card-header .titles { flex: 1; min-width: 0; }
+  .card-header h1 { font-size: 18px; font-weight: 700; }
+  .card-header p { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .enabled-badge { display: flex; align-items: center; gap: 6px; }
+  .enabled-badge .count { background: var(--success-soft); color: var(--success); padding: 3px 12px; border-radius: 20px; font-weight: 700; font-size: 13px; }
+
+  /* 平台列表 */
+  .platform-list { padding: 8px 28px; display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; }
+  .platform-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; cursor: pointer; transition: all .15s; }
+  .platform-item:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(79, 110, 247, .1); }
+  .platform-item.disabled-item { opacity: .6; }
+  .platform-avatar { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; color: #fff; flex-shrink: 0; }
+  .platform-item .meta { flex: 1; min-width: 0; }
+  .platform-item .name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .platform-item .sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .status-pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .status-pill.on { background: var(--success-soft); color: var(--success); }
+  .status-pill.off { background: #f0f1f3; color: var(--text-3); }
+
+  .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: #d1d5db; border-radius: 22px; transition: .2s; cursor: pointer; }
+  .slider::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch input:checked + .slider { background: var(--success); }
+  .switch input:checked + .slider::before { transform: translateX(18px); }
+
+  /* 完成按钮 */
+  .card-footer { padding: 18px 28px 26px; }
+  #doneBtn { width: 100%; padding: 15px; border: none; border-radius: 12px; background: linear-gradient(135deg, #4f6ef7, #3d5cf0); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(79, 110, 247, .3); transition: all .15s; }
+  #doneBtn:hover { background: linear-gradient(135deg, #3d5cf0, #2f4ce0); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79, 110, 247, .4); }
+  #doneBtn.done { background: var(--success); box-shadow: none; }
+
+  /* 模态框 */
+  .modal-mask { position: fixed; inset: 0; background: rgba(16, 24, 40, .45); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .modal-mask.open { opacity: 1; pointer-events: auto; }
+  .modal { width: 560px; max-width: 92vw; max-height: 86vh; height: 240px; background: var(--panel); border-radius: 16px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden; transform: translateY(12px); transition: transform .2s, height .28s ease; }
+  .modal-mask.open .modal { transform: translateY(0); }
+  .modal-header { padding: 18px 22px 12px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .modal-header .platform-avatar { width: 32px; height: 32px; border-radius: 9px; }
+  .modal-header h3 { font-size: 15px; font-weight: 700; flex: 1; }
+  .modal-close { border: none; background: none; font-size: 18px; color: var(--text-3); cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+  .modal-close:hover { background: #f0f1f3; color: var(--text); }
+  .modal-body { flex: 1; overflow: hidden; min-height: 0; }
+  .modal-body iframe { width: 100%; height: 100%; border: 0; display: block; opacity: 0; transition: opacity .2s; }
+
+  /* 完成覆盖层 */
+  .done-overlay { position: fixed; inset: 0; background: var(--panel); z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  .done-overlay.show { display: flex; }
+  .done-overlay .check { width: 80px; height: 80px; border-radius: 50%; background: var(--success); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 44px; box-shadow: 0 12px 32px rgba(33, 161, 121, .3); }
+  .done-overlay h2 { font-size: 22px; font-weight: 700; }
+  .done-overlay p { font-size: 14px; color: var(--text-3); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <div class="logo">⌂</div>
+      <div class="titles">
+        <h1>Grove Smart Home</h1>
+        <p>启用平台并完成登录</p>
+      </div>
+      <div class="enabled-badge" id="badge" style="display:none">
+        <span class="count" id="badgeCount">0</span>
+      </div>
+    </div>
+
+    <div class="platform-list" id="platform-list"></div>
+
+    <div class="card-footer">
+      <button id="doneBtn">完成配置</button>
+    </div>
+  </div>
+
+  <!-- 平台配置模态框 -->
+  <div class="modal-mask" id="modalMask">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <div class="platform-avatar" id="modalAvatar">?</div>
+        <h3 id="modalTitle">平台</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <iframe id="frame"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- 完成覆盖层 -->
+  <div class="done-overlay" id="doneOverlay">
+    <div class="check">✓</div>
+    <h2>配置已完成</h2>
+    <p>可以关闭此窗口了</p>
+  </div>
+
+<script>
+const listEl = document.getElementById('platform-list');
+const badge = document.getElementById('badge');
+const badgeCount = document.getElementById('badgeCount');
+const doneBtn = document.getElementById('doneBtn');
+const modalMask = document.getElementById('modalMask');
+const modalEl = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const modalAvatar = document.getElementById('modalAvatar');
+const modalClose = document.getElementById('modalClose');
+const frame = document.getElementById('frame');
+let platforms = [];
+let activeId = null;
+
+const AVATAR_COLORS = ['#4f6ef7', '#8a5cf7', '#e5484d', '#21a179', '#d9822b', '#0db2b2'];
+function avatarColor(i) { return AVATAR_COLORS[i % AVATAR_COLORS.length]; }
+function avatarText(name) { return (name || '?').slice(0, 1).toUpperCase(); }
+
+async function loadPlatforms() {
+  const res = await fetch('/api/platforms');
+  platforms = await res.json();
+  render();
+  updateBadge();
+}
+
+function updateBadge() {
+  const n = platforms.filter((p) => p.enabled).length;
+  badge.style.display = n > 0 ? 'flex' : 'none';
+  badgeCount.textContent = n;
+}
+
+function openModal(p, i) {
+  activeId = p.id;
+  modalTitle.textContent = p.displayName || p.id;
+  modalAvatar.textContent = avatarText(p.displayName);
+  modalAvatar.style.background = avatarColor(i);
+  // 重置内联高度 → CSS 小尺寸先显示；iframe 隐藏直到内容就绪
+  modalEl.style.height = '';
+  frame.style.opacity = '0';
+  modalMask.classList.add('open');
+  if (p.configPage) frame.src = p.configPage;
+  else frame.srcdoc = '<div style="padding:24px;font-family:sans-serif;color:#666">该平台暂无独立配置页</div>';
+}
+
+function closeModal() {
+  modalMask.classList.remove('open');
+  frame.src = 'about:blank';
+  stopAutoFit();
+}
+
+// ── iframe 内容高度自适应：由平台页通过 postMessage 上报真实内容高度 ──
+let fitTimer = null;
+function stopAutoFit() { if (fitTimer) { clearInterval(fitTimer); fitTimer = null; } }
+
+function startAutoFit() {
+  stopAutoFit();
+  // 兜底：若平台页未上报，轮询读取（兼容旧页面）
+  fitTimer = setInterval(() => fitNow(false), 800);
+}
+
+function fitNow(show) {
+  try {
+    const doc = frame.contentDocument;
+    const body = doc?.body;
+    const h = body?.offsetHeight;
+    if (h && h > 80) {
+      applyHeight(h + modalEl.querySelector('.modal-header').offsetHeight, show);
+    }
+  } catch { /* 跨源/about:blank 时忽略 */ }
+}
+
+function applyHeight(total, show) {
+  const maxH = Math.round(window.innerHeight * 0.86);
+  const target = Math.min(total, maxH);
+  const cur = parseInt(modalEl.style.height) || 0;
+  if (!show && cur && Math.abs(target - cur) < 8) return;
+  modalEl.style.height = target + 'px';
+  if (frame.style.opacity !== '1') frame.style.opacity = '1';
+}
+
+// 平台页通过 postMessage 上报内容高度（推荐方式，最可靠）
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'smart-home-resize' && typeof e.data.height === 'number') {
+    stopAutoFit(); // 平台页自己上报，无需轮询兜底
+    applyHeight(e.data.height + modalEl.querySelector('.modal-header').offsetHeight, true);
+  }
+});
+
+frame.addEventListener('load', startAutoFit);
+modalClose.addEventListener('click', closeModal);
+modalMask.addEventListener('click', (e) => { if (e.target === modalMask) closeModal(); });
+window.addEventListener('resize', () => fitNow(false));
+
+let configDone = false;
+doneBtn.addEventListener('click', async () => {
+  if (!configDone) {
+    doneBtn.disabled = true;
+    doneBtn.textContent = '保存中…';
+    try { await fetch('/api/done', { method: 'POST' }); } catch { /* 服务可能已关 */ }
+    configDone = true;
+    // 显示完整收尾画面 + 尝试自动关闭（Chrome 对系统打开的标签页可能拦截）
+    document.getElementById('doneOverlay').classList.add('show');
+    setTimeout(() => {
+      try { window.close(); } catch { /* 忽略 */ }
+    }, 500);
+  }
+});
+
+// 用户直接关闭标签页（未点完成配置）→ 通知后台结束，避免 CLI 永久阻塞
+window.addEventListener('pagehide', () => {
+  if (!configDone) {
+    navigator.sendBeacon('/api/done', '{}');
+  }
+});
+
+function render() {
+  listEl.innerHTML = '';
+  platforms.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'platform-item' + (p.enabled ? '' : ' disabled-item');
+    item.innerHTML = `
+      <div class="platform-avatar" style="background:${avatarColor(i)}">${avatarText(p.displayName)}</div>
+      <div class="meta">
+        <div class="name">${p.displayName || p.id}</div>
+        <div class="sub">${p.enabled ? '已登录' : '未启用'}</div>
+      </div>
+      <span class="status-pill ${p.enabled ? 'on' : 'off'}">${p.enabled ? '已启用' : '未启用'}</span>
+      <label class="switch" title="${p.enabled ? '禁用' : '启用'}">
+        <input type="checkbox" ${p.enabled ? 'checked' : ''} data-platform="${p.id}">
+        <span class="slider"></span>
+      </label>`;
+
+    // 点击平台区域（非开关）→ 打开模态框
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.switch')) return;
+      openModal(p, i);
+    });
+    const toggle = item.querySelector('input');
+    toggle.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      p.enabled = toggle.checked;
+      await fetch('/api/platforms/enabled', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: p.id, enabled: toggle.checked }),
+      });
+      updateBadge();
+      render();
+    });
+    const slider = item.querySelector('.slider');
+    slider.addEventListener('click', (e) => e.stopPropagation());
+    listEl.appendChild(item);
+  });
+}
+
+loadPlatforms();
+</script>
+</body>
+</html>
